@@ -4,15 +4,12 @@
  */
 
 export enum InterviewMode {
-  Technical = "Technical Interview",
+  TechnicalActuarial = "Technical Actuarial Related",
   HR = "HR Interview",
   Behavioral = "Behavioral Interview",
-  SoftwareEngineering = "Software Engineering Interview",
-  DataScience = "Data Science Interview",
-  ProductManagement = "Product Management Interview",
-  Actuarial = "Actuarial Interview",
   Managerial = "Managerial Interview",
-  Custom = "Custom Interview"
+  Partner = "Partner Interview",
+  OtherActuarial = "Other Actuarial Related"
 }
 
 export enum DifficultyLevel {
@@ -160,6 +157,7 @@ export interface InterviewSession {
   company?: string;
   actuarialFocus?: string;
   xpEarned?: number;
+  webcamEnabled?: boolean;
 }
 
 export interface StudyPlan {

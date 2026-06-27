@@ -31,6 +31,7 @@ import CodingSandbox from "./components/CodingSandbox";
 import ApplicationTracker from "./components/ApplicationTracker";
 import CareerRoadmap from "./components/CareerRoadmap";
 import { RecruiterDashboard } from "./components/RecruiterDashboard";
+import CVBuilder from "./components/CVBuilder";
 import { 
   DEFAULT_QUESTIONS, DEFAULT_APTITUDE_QUESTIONS, DEFAULT_CODING_PROBLEMS, DEFAULT_INTERVIEWERS,
   QuestionItem, AptitudeQuestion, CodingProblem, InterviewerProfile
@@ -54,7 +55,7 @@ export default function App() {
       mentor: true,
       assessment: true,
       questionbank: true,
-      coding: true,
+      coding: false,
       setup: true,
       roadmap: true,
       tracker: true,
@@ -154,7 +155,21 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); // starts at login screen for robust Demo
   const [userEmail, setUserEmail] = useState("adityaagarwal113@gmail.com");
   const [userName, setUserName] = useState("Aditya Agarwal");
-  const [userRole, setUserRole] = useState("Senior AI Engineer");
+  const [userRole, setUserRole] = useState("Actuarial Analyst (IAI & IFoA Candidate)");
+
+  // IAI & IFoA specific state variables (No of exams, paper names, and other details)
+  const [examsCleared, setExamsCleared] = useState<number>(() => {
+    const saved = localStorage.getItem("platform_exams_cleared");
+    return saved ? parseInt(saved, 10) : 3;
+  });
+  const [paperNames, setPaperNames] = useState<string>(() => {
+    const saved = localStorage.getItem("platform_paper_names");
+    return saved || "CS1, CM1, CB1";
+  });
+  const [actuarialBoard, setActuarialBoard] = useState<string>(() => {
+    const saved = localStorage.getItem("platform_actuarial_board");
+    return saved || "IAI"; // "IAI" | "IFoA" | "Both"
+  });
   const [authError, setAuthError] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -171,12 +186,12 @@ export default function App() {
 
   // Module 1 Core states
   const [careerPrefs, setCareerPrefs] = useState<CareerPreferences>({
-    targetRoles: ["Senior AI Engineer", "Lead Product Manager"],
-    targetCompanies: ["Google", "McKinsey", "MetLife"],
-    expectedSalary: "$160,000 - $220,000",
-    preferredLocation: "San Francisco, CA / Remote",
-    experienceLevel: "Senior",
-    industry: "Technology & AI Services"
+    targetRoles: ["Actuarial Associate", "Pricing Actuary", "Valuation Actuary"],
+    targetCompanies: ["Milliman", "Swiss Re", "LIC of India", "HDFC Ergo"],
+    expectedSalary: "₹1,500,000 - ₹3,500,000",
+    preferredLocation: "Mumbai / London / Remote",
+    experienceLevel: "Entry",
+    industry: "Actuarial Science & Risk Management"
   });
 
   const [userSettings, setUserSettings] = useState<UserSettings>({
@@ -405,7 +420,7 @@ export default function App() {
         const parsed = JSON.parse(activeSes);
         if (parsed.status === "active") {
           setCurrentSession(parsed);
-          changeTab("interview", true);
+          // Load but do not automatically navigate to ensure dashboard is default on load
         }
       }
     } catch (e) {
@@ -486,11 +501,26 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || "Failed to analyze resume.");
+      let errMsg = "Failed to analyze resume.";
+      try {
+        const errText = await response.text();
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          errMsg = errText || errMsg;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const parsedData = await response.json();
+    let parsedData;
+    try {
+      const resText = await response.text();
+      parsedData = JSON.parse(resText);
+    } catch (e) {
+      throw new Error("Unable to parse resume details. Please try again.");
+    }
     const newResume: Resume = {
       id: "res-" + Date.now(),
       name,
@@ -515,11 +545,26 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || "Failed to analyze job description.");
+      let errMsg = "Failed to analyze job description.";
+      try {
+        const errText = await response.text();
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          errMsg = errText || errMsg;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const parsedData = await response.json();
+    let parsedData;
+    try {
+      const resText = await response.text();
+      parsedData = JSON.parse(resText);
+    } catch (e) {
+      throw new Error("Unable to parse job description details. Please try again.");
+    }
     const newJd: JobDescription = {
       id: "jd-" + Date.now(),
       name,
@@ -546,6 +591,20 @@ export default function App() {
     saveJds(filtered);
   };
 
+  // Delete Interview Session
+  const handleDeleteInterview = (id: string) => {
+    const filtered = interviews.filter(s => s.id !== id);
+    saveInterviews(filtered);
+    if (currentSession && currentSession.id === id) {
+      setCurrentSession(null);
+      localStorage.removeItem("platform_active_session");
+      if (activeTab === "interview") {
+        setActiveTab("dashboard");
+      }
+    }
+    triggerNotification("Session Deleted", "The interview session has been deleted.", "reminder");
+  };
+
   // 3. Questions Generator Agent: Starting Interview
   const handleStartInterview = async (config: {
     mode: InterviewMode;
@@ -555,6 +614,7 @@ export default function App() {
     jdId?: string;
     company?: string;
     actuarialFocus?: string;
+    webcamEnabled?: boolean;
   }) => {
     // Select the bound documents context
     const boundResume = resumes.find(r => r.id === config.resumeId)?.parsedData;
@@ -575,11 +635,26 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || "Failed to generate interview space.");
+      let errMsg = "Failed to generate interview space.";
+      try {
+        const errText = await response.text();
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          errMsg = errText || errMsg;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      const resText = await response.text();
+      data = JSON.parse(resText);
+    } catch (e) {
+      throw new Error("Unable to parse generated interview questions. Please try again.");
+    }
     const generatedQuestions: InterviewQuestion[] = data.questions || [];
 
     if (generatedQuestions.length === 0) {
@@ -598,7 +673,8 @@ export default function App() {
       transcript: [],
       status: "active",
       company: config.company,
-      actuarialFocus: config.actuarialFocus
+      actuarialFocus: config.actuarialFocus,
+      webcamEnabled: config.webcamEnabled
     };
 
     setCurrentSession(newSession);
@@ -613,7 +689,7 @@ export default function App() {
   };
 
   // 4. Answer Evaluator Agent call
-  const handleSubmitAnswer = async (answer: string, codeLanguage?: string, codeOutput?: string) => {
+  const handleSubmitAnswer = async (answer: string, codeLanguage?: string, codeOutput?: string, actuarialPersonaEnabled?: boolean) => {
     if (!currentSession) return;
     const currentQuestion = currentSession.questions[currentSession.currentQuestionIndex];
 
@@ -624,16 +700,32 @@ export default function App() {
         question: currentQuestion,
         answer,
         codeLanguage,
-        codeOutput
+        codeOutput,
+        isActuarialPersona: actuarialPersonaEnabled
       })
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || "Failed to submit evaluation review.");
+      let errMsg = "Failed to submit evaluation review.";
+      try {
+        const errText = await response.text();
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          errMsg = errText || errMsg;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const evaluationResult = await response.json();
+    let evaluationResult;
+    try {
+      const resText = await response.text();
+      evaluationResult = JSON.parse(resText);
+    } catch (e) {
+      throw new Error("Unable to parse evaluation review feedback. Please try again.");
+    }
 
     const record: AnswerRecord = {
       questionId: currentQuestion.id,
@@ -685,11 +777,26 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || "Failed to generate performance scorecard.");
+      let errMsg = "Failed to generate performance scorecard.";
+      try {
+        const errText = await response.text();
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          errMsg = errText || errMsg;
+        }
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      const resText = await response.text();
+      data = JSON.parse(resText);
+    } catch (e) {
+      throw new Error("Unable to parse performance scorecard and study plan. Please try again.");
+    }
     const finalReportCard: ReportCard = data.reportCard;
     const finalStudyPlan: StudyPlan = data.studyPlan;
 
@@ -707,7 +814,7 @@ export default function App() {
       newBadges.push("Elite Performer");
       triggerNotification("New Badge Unlocked! 🏆", "Unlocked 'Elite Performer' for scoring >= 90%!", "achievement");
     }
-    if (currentSession.mode === InterviewMode.Actuarial && !newBadges.includes("Risk Specialist")) {
+    if ((currentSession.mode === InterviewMode.TechnicalActuarial || currentSession.mode === InterviewMode.OtherActuarial) && !newBadges.includes("Risk Specialist")) {
       newBadges.push("Risk Specialist");
       triggerNotification("New Badge Unlocked! 📈", "Unlocked 'Risk Specialist' for completing an actuarial session!", "achievement");
     }
@@ -777,7 +884,10 @@ export default function App() {
     const computedName = mockName.charAt(0).toUpperCase() + mockName.slice(1);
     setUserName(computedName);
     setAuthError("");
-    changePortalMode(loginPersona);
+
+    const isAdmin = loginEmail === "adityaagarwal113@gmail.com" || loginEmail.toLowerCase() === "admin@example.com";
+    const finalPersona = isAdmin ? loginPersona : "candidate";
+    changePortalMode(finalPersona);
 
     localStorage.setItem("platform_session_active", "true");
     localStorage.setItem("current_user_email", loginEmail);
@@ -888,8 +998,8 @@ export default function App() {
               <div className="w-12 h-12 bg-indigo-500 rounded-xl mx-auto flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                 <Briefcase size={22} />
               </div>
-              <h2 className="text-xl font-display font-bold text-slate-800">AICOS</h2>
-              <p className="text-xs text-indigo-600 font-semibold tracking-wide uppercase">AI Career Operating System</p>
+              <h2 className="text-xl font-display font-black text-slate-800">ActuaryPrep</h2>
+              <p className="text-[10px] text-indigo-600 font-bold tracking-wide uppercase">AI-Powered Actuarial Exam & Career Prep Platform</p>
             </div>
 
             {/* Error notifications */}
@@ -1127,37 +1237,39 @@ export default function App() {
                     <Briefcase size={16} />
                   </div>
                   <div className="text-left">
-                    <h1 className="text-xs font-display font-black text-white tracking-tight leading-none">AICOS</h1>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-1">AI Career OS</span>
+                    <h1 className="text-xs font-display font-black text-white tracking-tight leading-none">ActuaryPrep</h1>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-1">Actuarial Prep Platform</span>
                   </div>
                 </div>
               </div>
 
               {/* Portal Mode Switcher Toggle */}
-              <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-900/10 shrink-0">
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
-                  <button
-                    onClick={() => changePortalMode("candidate")}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                      userPortalMode === "candidate"
-                        ? "bg-brand-500 text-white shadow-md shadow-brand-500/10"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <User size={12} /> User Portal
-                  </button>
-                  <button
-                    onClick={() => changePortalMode("admin")}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                      userPortalMode === "admin"
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <Shield size={12} /> Admin
-                  </button>
+              {(userEmail === "adityaagarwal113@gmail.com" || userEmail.toLowerCase() === "admin@example.com") && (
+                <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-900/10 shrink-0">
+                  <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+                    <button
+                      onClick={() => changePortalMode("candidate")}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        userPortalMode === "candidate"
+                          ? "bg-brand-500 text-white shadow-md shadow-brand-500/10"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <User size={12} /> User Portal
+                    </button>
+                    <button
+                      onClick={() => changePortalMode("admin")}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        userPortalMode === "admin"
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <Shield size={12} /> Admin
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {userPortalMode === "candidate" ? (
                 /* Gamified Level Progress */
@@ -1247,22 +1359,17 @@ export default function App() {
                     title: "Learn & Prepare",
                     items: [
                       { key: "dashboard", label: "Dashboard Hub", icon: LayoutDashboard },
+                      { key: "cv-builder", label: "ATS CV Builder", icon: FileText },
                       { key: "upload", label: "Document Center", icon: FileText },
                       { key: "mentor", label: "AI Mentor & Tutor", icon: MessageSquare },
-                    ]
-                  },
-                  {
-                    title: "Practice & Sandbox",
-                    items: [
-                      { key: "assessment", label: "Aptitude Tests", icon: Award },
-                      { key: "questionbank", label: "Question Bank", icon: BookOpen },
-                      { key: "coding", label: "Coding Sandbox", icon: Terminal },
                     ]
                   },
                   {
                     title: "Mock Simulations",
                     items: [
                       { key: "setup", label: "Start Simulation", icon: Play },
+                      { key: "assessment", label: "Aptitude Tests", icon: Award },
+                      { key: "questionbank", label: "Question Bank", icon: BookOpen },
                     ]
                   },
                   {
@@ -1500,22 +1607,17 @@ export default function App() {
                           title: "Learn & Prepare",
                           items: [
                             { key: "dashboard", label: "Dashboard Hub", icon: LayoutDashboard },
+                            { key: "cv-builder", label: "ATS CV Builder", icon: FileText },
                             { key: "upload", label: "Document Center", icon: FileText },
                             { key: "mentor", label: "AI Mentor & Tutor", icon: MessageSquare },
-                          ]
-                        },
-                        {
-                          title: "Practice & Sandbox",
-                          items: [
-                            { key: "assessment", label: "Aptitude Tests", icon: Award },
-                            { key: "questionbank", label: "Question Bank", icon: BookOpen },
-                            { key: "coding", label: "Coding Sandbox", icon: Terminal },
                           ]
                         },
                         {
                           title: "Mock Simulations",
                           items: [
                             { key: "setup", label: "Start Simulation", icon: Play },
+                            { key: "assessment", label: "Aptitude Tests", icon: Award },
+                            { key: "questionbank", label: "Question Bank", icon: BookOpen },
                           ]
                         },
                         {
@@ -1680,7 +1782,15 @@ export default function App() {
                     careerPrefs={careerPrefs}
                     onAddXp={saveXp}
                     onUploadRedirect={() => changeTab("upload")}
-                    onStartInterviewRedirect={() => changeTab("setup")}
+                    onStartInterviewRedirect={(session) => {
+                      if (session) {
+                        setCurrentSession(session);
+                        localStorage.setItem("platform_active_session", JSON.stringify(session));
+                        changeTab("interview");
+                      } else {
+                        changeTab("setup");
+                      }
+                    }}
                     onSelectResume={(id) => {
                       changeTab("upload");
                     }}
@@ -1693,6 +1803,28 @@ export default function App() {
                       setSelectedReportSession(session);
                       changeTab("report");
                     }}
+                    onDeleteInterview={handleDeleteInterview}
+                    examsCleared={examsCleared}
+                    paperNames={paperNames}
+                    actuarialBoard={actuarialBoard}
+                    onChangeTab={(tab) => changeTab(tab)}
+                  />
+                )}
+
+                {activeTab === "cv-builder" && (
+                  <CVBuilder
+                    resumes={resumes}
+                    userEmail={userEmail}
+                    userName={userName}
+                    userRole={userRole}
+                    examsCleared={examsCleared}
+                    setExamsCleared={setExamsCleared}
+                    paperNames={paperNames}
+                    setPaperNames={setPaperNames}
+                    actuarialBoard={actuarialBoard}
+                    setActuarialBoard={setActuarialBoard}
+                    onAddResume={handleAddResume}
+                    onAddXp={saveXp}
                   />
                 )}
 
@@ -1733,7 +1865,7 @@ export default function App() {
                       handleStartInterview({
                         resumeId: resumes[0]?.id || undefined,
                         jdId: jds[0]?.id || undefined,
-                        mode: InterviewMode.Technical,
+                        mode: InterviewMode.TechnicalActuarial,
                         difficulty: DifficultyLevel.Medium,
                         personality: InterviewerPersonality.HiringManager,
                         company: company
@@ -1822,6 +1954,7 @@ export default function App() {
                       session={currentSession}
                       onSubmitAnswer={handleSubmitAnswer}
                       onCompleteSession={handleCompleteSession}
+                      onDeleteSession={() => handleDeleteInterview(currentSession.id)}
                     />
                   </div>
                 )}
@@ -1885,6 +2018,12 @@ export default function App() {
                   userBadges={userBadges}
                   activeTab={profileModalTab}
                   setActiveTab={setProfileModalTab}
+                  examsCleared={examsCleared}
+                  setExamsCleared={setExamsCleared}
+                  paperNames={paperNames}
+                  setPaperNames={setPaperNames}
+                  actuarialBoard={actuarialBoard}
+                  setActuarialBoard={setActuarialBoard}
                 />
 
                 <div className="flex justify-end pt-3 border-t border-slate-100">

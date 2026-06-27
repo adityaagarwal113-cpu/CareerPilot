@@ -47,54 +47,102 @@ export interface InterviewerProfile {
 }
 
 export const DEFAULT_QUESTIONS: QuestionItem[] = [
-  { id: "qb-1", text: "How would you model pricing options for high-hazard property risk premiums under negative interest scenarios?", company: "MetLife", role: "Actuary / Risk Manager", difficulty: "Hard", round: "Technical", subject: "Actuarial Science" },
-  { id: "qb-2", text: "Explain the difference between L1 and L2 regularization. Under what exact conditions would you prefer L1?", company: "Google", role: "AI & ML Engineer", difficulty: "Medium", round: "Technical", subject: "Machine Learning" },
-  { id: "qb-3", text: "Describe a complex professional failure. Walk through your mitigation steps and eventual lesson using the STAR format.", company: "Amazon", role: "Product Manager", difficulty: "Easy", round: "Behavioral", subject: "STAR Leadership" },
-  { id: "qb-4", text: "Our client is a global retail giant facing 15% year-on-year supply chain delays. How would you structure your feasibility analysis?", company: "McKinsey", role: "Management Consultant", difficulty: "Hard", round: "System Design", subject: "Business Strategy Case" },
-  { id: "qb-5", text: "Write an optimized function in Python to detect whether a directed graph contains a cycle using topological sorting.", company: "Google", role: "Senior Software Engineer", difficulty: "Hard", round: "Technical", subject: "Data Structures & Algorithms" },
-  { id: "qb-6", text: "Walk through the full corporate valuation model process. How would you adjust cost of capital for a volatile tech startup?", company: "Goldman Sachs", role: "Investment Banking Analyst", difficulty: "Medium", round: "Technical", subject: "Corporate Finance" }
+  { 
+    id: "qb-1", 
+    text: "How would you model and price options for high-hazard property risk premiums under negative interest scenarios using CM2 / financial economics principles?", 
+    company: "Milliman", 
+    role: "Actuarial Associate (P&C)", 
+    difficulty: "Hard", 
+    round: "Technical", 
+    subject: "Actuarial Science - CM2" 
+  },
+  { 
+    id: "qb-2", 
+    text: "Under what conditions of claims development would you prefer the Bornhuetter-Ferguson reserving method over the basic Chain Ladder technique for an SP7 General Insurance analysis?", 
+    company: "Swiss Re", 
+    role: "Valuation Actuary", 
+    difficulty: "Medium", 
+    round: "Technical", 
+    subject: "Reserving & Capital - SP7" 
+  },
+  { 
+    id: "qb-3", 
+    text: "Describe a situation where you had to explain a complex actuarial modeling surplus variance or IFRS 17 contract service margin (CSM) calculation to non-actuarial corporate executives. Walk through your strategy using the CP3 Communication guidelines.", 
+    company: "Max Life Insurance", 
+    role: "Appointed Actuary Consultant", 
+    difficulty: "Easy", 
+    round: "Behavioral", 
+    subject: "Actuarial Communication - CP3" 
+  },
+  { 
+    id: "qb-4", 
+    text: "Design an Enterprise Risk Management (ERM) framework under SP9 / Solvency II for an insurer writing high-volume micro-health insurance in India. What are your main underwriting risk mitigants?", 
+    company: "HDFC Ergo", 
+    role: "Risk Management Actuary", 
+    difficulty: "Hard", 
+    round: "System Design", 
+    subject: "ERM & Solvency - SP9" 
+  },
+  { 
+    id: "qb-5", 
+    text: "Explain how transition intensities in a Markov multi-state model can be used to model critical illness policy premiums with multiple recovery states under CS2 guidelines.", 
+    company: "LIC of India", 
+    role: "Product Development Actuary", 
+    difficulty: "Hard", 
+    round: "Technical", 
+    subject: "Survival Models - CS2" 
+  },
+  { 
+    id: "qb-6", 
+    text: "Formulate the net level premium equation for an n-year term assurance policy issued to a life aged x, detailing how you account for survival probabilities (t_p_x) and force of mortality (μ_x+t).", 
+    company: "Prudential UK", 
+    role: "Life Insurance Pricing Analyst", 
+    difficulty: "Medium", 
+    round: "Technical", 
+    subject: "Life Contingencies - CM1" 
+  }
 ];
 
 export const DEFAULT_APTITUDE_QUESTIONS: AptitudeQuestion[] = [
   {
     id: "q-quant-1",
-    category: "Quantitative Aptitude",
-    question: "A company's risk reserving pool compounding annually grew from $10M to $12.1M in two years. What was the exact annual risk growth compounding rate?",
-    options: ["8%", "10%", "12%", "15%"],
+    category: "Actuarial Mathematics (CM1)",
+    question: "An insurer's claims reserving fund compounded annually grew from ₹10.0M to ₹12.1M over exactly two years. What was the exact annual effective compound interest rate (i) earned by the fund?",
+    options: ["8.0%", "10.0%", "11.0%", "12.1%"],
     correctIndex: 1,
-    explanation: "Using the compound growth formula: A = P(1 + r)^t. Here, 12.1 = 10(1 + r)^2 => 1.21 = (1 + r)^2 => 1.1 = 1 + r => r = 0.10 or 10%.",
-    difficulty: "Medium"
+    explanation: "Using the compound interest formula: A = P(1 + i)^t. Here, 12.1 = 10(1 + i)^2 => 1.21 = (1 + i)^2 => 1.1 = 1 + i => i = 0.10 or 10.0% effective annual rate.",
+    difficulty: "Easy"
   },
   {
     id: "q-quant-2",
-    category: "Quantitative Aptitude",
-    question: "If a software server's probability of failure during high-concurrency workloads is 0.05, what is the probability that it survives exactly 3 consecutive independent peaks?",
-    options: ["0.857", "0.950", "0.995", "0.150"],
-    correctIndex: 0,
-    explanation: "Survival probability for a single peak is 1 - 0.05 = 0.95. For 3 consecutive peaks, the joint probability is 0.95^3 = 0.857375.",
+    category: "Actuarial Statistics (CS1)",
+    question: "Assuming a constant force of mortality μ = 0.02 per annum, what is the exact probability that a life aged x survives for at least another 10 years (10p_x)?",
+    options: ["0.2000", "0.8000", "0.8187", "0.9802"],
+    correctIndex: 2,
+    explanation: "Under a constant force of mortality μ, the survival probability is t_p_x = e^(-μ * t). For t = 10 and μ = 0.02, we get 10p_x = e^(-0.02 * 10) = e^(-0.2) ≈ 0.81873.",
     difficulty: "Medium"
   },
   {
     id: "q-log-1",
-    category: "Logical Reasoning",
-    question: "All high-growth companies prioritize AI. Some companies that prioritize AI do not survive the first 3 years. Which of the following must be true?",
+    category: "Risk & Capital Management (CP1)",
+    question: "Under Solvency II / IAI guidelines, if a general insurer increases its reinsurance retention ratio while keeping gross written premium constant, how does this affect its Solvency Capital Requirement (SCR) and Net Profit Margin variance?",
     options: [
-      "No high-growth company fails in the first 3 years.",
-      "Some companies that do not survive the first 3 years might be high-growth companies.",
-      "All AI prioritizing companies are high-growth.",
-      "No AI prioritizing companies fail."
+      "SCR decreases and variance of net profit decreases.",
+      "SCR increases and variance of net profit decreases.",
+      "SCR decreases and variance of net profit increases.",
+      "SCR increases and variance of net profit increases."
     ],
-    correctIndex: 1,
-    explanation: "Since some AI-prioritizing companies fail, and all high-growth companies are part of the AI-prioritizing group, it is logically possible that some failing companies are high-growth.",
-    difficulty: "Medium"
+    correctIndex: 3,
+    explanation: "Increasing the reinsurance retention ratio means retaining more risk on the insurer's own balance sheet. This increases potential claim volatility (variance of net profit increases) and increases capital needed for self-insurance, thereby increasing the SCR.",
+    difficulty: "Hard"
   },
   {
     id: "q-verbal-1",
-    category: "Verbal Ability",
-    question: "Select the word that is most opposite in meaning to 'Obfuscate':",
-    options: ["Clarify", "Confound", "Elicit", "Prevaricate"],
+    category: "Actuarial Professional Standards (APS)",
+    question: "According to IAI and IFoA professional codes of conduct, which principles represent the absolute duty of an actuary to ensure work is carried out with professional competence and care?",
+    options: ["Integrity and Competence", "Profitable Underwriting", "Asset Optimization", "Statistical Superiority"],
     correctIndex: 0,
-    explanation: "To obfuscate means to make obscure, unclear, or unintelligible. Its opposite is to clarify, which means to make clear and easy to understand.",
+    explanation: "The core principles of the Actuarial Code are Integrity, Competence and Care, Impartiality, Compliance, and Communication. Professional competence and care are fundamental ethical requirements.",
     difficulty: "Easy"
   }
 ];
@@ -102,71 +150,72 @@ export const DEFAULT_APTITUDE_QUESTIONS: AptitudeQuestion[] = [
 export const DEFAULT_CODING_PROBLEMS: CodingProblem[] = [
   {
     id: "p-1",
-    title: "Two Sum",
-    difficulty: "Easy",
-    timeLimit: "O(n)",
-    spaceLimit: "O(n)",
-    description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.",
-    constraints: [
-      "2 <= nums.length <= 10^4",
-      "-10^9 <= nums[i] <= 10^9",
-      "-10^9 <= target <= 10^9",
-      "Only one valid answer exists."
-    ],
-    starterCodes: {
-      javascript: `function twoSum(nums, target) {\n  // Write your O(n) solution here\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) {\n      return [map.get(complement), i];\n    }\n    map.set(nums[i], i);\n  }\n  return [];\n}`,
-      python: `def two_sum(nums: list[int], target: int) -> list[int]:\n    # Write your O(n) solution here\n    nums_map = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in nums_map:\n            return [nums_map[complement], i]\n        nums_map[num] = i\n    return []`,
-      typescript: `function twoSum(nums: number[], target: number): number[] {\n  // Write your O(n) solution here\n  const map = new Map<number, number>();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) {\n      return [map.get(complement), i];\n    }\n    map.set(nums[i], i);\n  }\n  return [];\n}`
-    },
-    testCases: [
-      { input: "nums = [2,7,11,15], target = 9", output: "[0,1]" },
-      { input: "nums = [3,2,4], target = 6", output: "[1,2]" }
-    ],
-    validatorCode: "map.set, Map"
-  },
-  {
-    id: "p-2",
-    title: "Reverse Linked List",
+    title: "Annuity Expected Present Value (EPV)",
     difficulty: "Easy",
     timeLimit: "O(n)",
     spaceLimit: "O(1)",
-    description: "Given the `head` of a singly linked list, reverse the list, and return the reversed list.\n\nCould you reverse it both iteratively and recursively?",
+    description: "Write an algorithm to calculate the Expected Present Value (EPV) of a whole life annuity-due of 1 payable annually in advance, issued to a life aged x.\n\nYou are given the effective annual interest rate `r` (as a float, e.g. 0.05) and a list `px` containing the single-year survival probabilities starting from age x (i.e. `px[0]` is p_x, `px[1]` is p_x+1, etc.).\n\nRecall that the EPV of an annuity-due is calculated as:\n`EPV = 1 + v * 1p_x + v^2 * 2p_x + v^3 * 3p_x + ...` where `v = 1 / (1 + r)` and `t_p_x = p_x * p_x+1 * ... * p_x+t-1`.",
     constraints: [
-      "The number of nodes in the list is the range [0, 5000].",
-      "-5000 <= Node.val <= 5000"
+      "0.01 <= r <= 0.20",
+      "1 <= px.length <= 100",
+      "0.5 <= px[i] <= 1.0"
     ],
     starterCodes: {
-      javascript: `function reverseList(head) {\n  // Write your iterative O(n) time, O(1) space solution here\n  let prev = null;\n  let curr = head;\n  while (curr !== null) {\n    let nextTemp = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = nextTemp;\n  }\n  return prev;\n}`,
-      python: `def reverse_list(head):\n    # Write your iterative O(n) time, O(1) space solution here\n    prev = None\n    curr = head\n    while curr:\n        next_temp = curr.next\n        curr.next = prev\n        prev = curr\n        curr = next_temp\n    return prev`,
-      typescript: `class ListNode {\n  val: number;\n  next: ListNode | null;\n  constructor(val?: number, next?: ListNode | null) {\n    this.val = (val===undefined ? 0 : val);\n    this.next = (next===undefined ? null : next);\n  }\n}\n\nfunction reverseList(head: ListNode | null): ListNode | null {\n  let prev: ListNode | null = null;\n  let curr = head;\n  while (curr !== null) {\n    let nextTemp: ListNode | null = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = nextTemp;\n  }\n  return prev;\n}`
+      javascript: `function calculateAnnuityEPV(r, px) {\n  // Write your actuarial present value calculator\n  const v = 1 / (1 + r);\n  let epv = 1;\n  let t_p_x = 1;\n  for (let t = 0; t < px.length; t++) {\n    t_p_x *= px[t];\n    epv += Math.pow(v, t + 1) * t_p_x;\n  }\n  return parseFloat(epv.toFixed(4));\n}`,
+      python: `def calculate_annuity_epv(r: float, px: list[float]) -> float:\n    # Write your actuarial present value calculator\n    v = 1 / (1 + r)\n    epv = 1.0\n    t_p_x = 1.0\n    for t in range(len(px)):\n        t_p_x *= px[t]\n        epv += (v ** (t + 1)) * t_p_x\n    return round(epv, 4)`,
+      typescript: `function calculateAnnuityEPV(r: number, px: number[]): number {\n  const v = 1 / (1 + r);\n  let epv = 1;\n  let t_p_x = 1;\n  for (let t = 0; t < px.length; t++) {\n    t_p_x *= px[t];\n    epv += Math.pow(v, t + 1) * t_p_x;\n  }\n  return parseFloat(epv.toFixed(4));\n}`
     },
     testCases: [
-      { input: "head = [1,2,3,4,5]", output: "[5,4,3,2,1]" },
-      { input: "head = [1,2]", output: "[2,1]" }
+      { input: "r = 0.05, px = [0.99, 0.98, 0.97]", output: "3.7145" },
+      { input: "r = 0.08, px = [0.95, 0.90]", output: "2.6245" }
     ],
-    validatorCode: "curr.next"
+    validatorCode: "t_p_x, epv"
+  },
+  {
+    id: "p-2",
+    title: "Chain Ladder Age-to-Age Factors",
+    difficulty: "Medium",
+    timeLimit: "O(n^2)",
+    spaceLimit: "O(n)",
+    description: "In general insurance claims reserving (CS2 / SP7), the Chain Ladder method is used to project ultimate claims. Given a cumulative run-off claims triangle with `n` origin years and `n` development years, calculate the age-to-age factors (also called Link Ratios) for each development step.\n\nThe input `triangle` is a list of lists representing a symmetric cumulative claims matrix where values beyond the diagonal are not fully developed (represented as zeros). The age-to-age factor `f_j` from development year `j` to `j+1` is calculated as the sum of cumulative claims at development year `j+1` divided by the sum of cumulative claims at development year `j` for all origin years where both are observed.\n\nFormally: `f_j = sum_{i=0}^{n-j-2} triangle[i][j+1] / sum_{i=0}^{n-j-2} triangle[i][j]`.\n\nReturn a list of development factors rounded to 3 decimal places.",
+    constraints: [
+      "triangle is an n x n symmetric matrix of cumulative claims (floats).",
+      "n >= 3",
+      "All non-zero entries are positive."
+    ],
+    starterCodes: {
+      javascript: `function chainLadderFactors(triangle) {\n  const n = triangle.length;\n  const factors = [];\n  for (let j = 0; j < n - 1; j++) {\n    let sumCurrent = 0;\n    let sumNext = 0;\n    for (let i = 0; i < n - j - 1; i++) {\n      sumCurrent += triangle[i][j];\n      sumNext += triangle[i][j+1];\n    }\n    factors.push(parseFloat((sumNext / sumCurrent).toFixed(3)));\n  }\n  return factors;\n}`,
+      python: `def chain_ladder_factors(triangle: list[list[float]]) -> list[float]:\n    n = len(triangle)\n    factors = []\n    for j in range(n - 1):\n        sum_current = 0.0\n        sum_next = 0.0\n        for i in range(n - j - 1):\n            sum_current += triangle[i][j]\n            sum_next += triangle[i][j+1]\n        factors.append(round(sum_next / sum_current, 3))\n    return factors`,
+      typescript: `function chainLadderFactors(triangle: number[][]): number[] {\n  const n = triangle.length;\n  const factors: number[] = [];\n  for (let j = 0; j < n - 1; j++) {\n    let sumCurrent = 0;\n    let sumNext = 0;\n    for (let i = 0; i < n - j - 1; i++) {\n      sumCurrent += triangle[i][j];\n      sumNext += triangle[i][j+1];\n    }\n    factors.push(parseFloat((sumNext / sumCurrent).toFixed(3)));\n  }\n  return factors;\n}`
+    },
+    testCases: [
+      { 
+        input: "triangle = [[100, 150, 180], [120, 175, 0], [140, 0, 0]]", 
+        output: "[1.477, 1.2]" 
+      }
+    ],
+    validatorCode: "sumNext, sumCurrent"
   },
   {
     id: "p-3",
-    title: "Valid Parentheses",
+    title: "Black-Scholes Option Pricing (d1 Parameter)",
     difficulty: "Easy",
-    timeLimit: "O(n)",
-    spaceLimit: "O(n)",
-    description: "Given a string `s` containing just the characters `'(', ')', '{', '}', '[' and ']'`, determine if the input string is valid.\n\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.\n3. Every close bracket has a corresponding open bracket of the same type.",
+    timeLimit: "O(1)",
+    spaceLimit: "O(1)",
+    description: "In Financial Economics (CM2 / SP5), standard European options are priced using the Black-Scholes-Merton model. One of the core inputs is the parameter `d1`.\n\nFormulate and calculate the `d1` parameter given:\n- `S`: Current price of the underlying asset\n- `K`: Strike price of the option\n- `r`: Risk-free interest rate (annual compound continuous force of interest)\n- `t`: Time to maturity (in years)\n- `sigma` (σ): Volatility of the underlying asset\n\nRecall that:\n`d1 = ( ln(S / K) + (r + (sigma^2) / 2) * t ) / ( sigma * sqrt(t) )`.\n\nReturn `d1` rounded to 4 decimal places.",
     constraints: [
-      "1 <= s.length <= 10^4",
-      "s consists of parentheses characters only: '()[]{}'"
+      "S > 0, K > 0, r >= 0, t > 0, sigma > 0"
     ],
     starterCodes: {
-      javascript: `function isValid(s) {\n  const stack = [];\n  const map = {\n    ')': '(',\n    '}': '{',\n    ']': '['\n  };\n  for (let char of s) {\n    if (char === '(' || char === '{' || char === '[') {\n      stack.push(char);\n    } else {\n      if (stack.pop() !== map[char]) {\n        return false;\n      }\n    }\n  }\n  return stack.length === 0;\n}`,
-      python: `def is_valid(s: str) -> bool:\n    stack = []\n    bracket_map = {")": "(", "}": "{", "]": "["}\n    for char in s:\n        if char in bracket_map.values():\n            stack.append(char)\n        elif char in bracket_map:\n            if not stack or stack.pop() != bracket_map[char]:\n                return False\n    return len(stack) == 0`,
-      typescript: `function isValid(s: string): boolean {\n  const stack: string[] = [];\n  const map: { [key: string]: string } = {\n    ')': '(',\n    '}': '{',\n    ']': '['\n  };\n  for (let char of s) {\n    if (char === '(' || char === '{' || char === '[') {\n      stack.push(char);\n    } else {\n      if (stack.pop() !== map[char]) {\n        return false;\n      }\n    }\n  }\n  return stack.length === 0;\n}`
+      javascript: `function calculateBSd1(S, K, r, t, sigma) {\n  const numerator = Math.log(S / K) + (r + Math.pow(sigma, 2) / 2) * t;\n  const denominator = sigma * Math.sqrt(t);\n  return parseFloat((numerator / denominator).toFixed(4));\n}`,
+      python: `import math\n\ndef calculate_bs_d1(S: float, K: float, r: float, t: float, sigma: float) -> float:\n    numerator = math.log(S / K) + (r + (sigma ** 2) / 2) * t\n    denominator = sigma * math.sqrt(t)\n    return round(numerator / denominator, 4)`,
+      typescript: `function calculateBSd1(S: number, K: number, r: number, t: number, sigma: number): number {\n  const numerator = Math.log(S / K) + (r + Math.pow(sigma, 2) / 2) * t;\n  const denominator = sigma * Math.sqrt(t);\n  return parseFloat((numerator / denominator).toFixed(4));\n}`
     },
     testCases: [
-      { input: "s = '()[]{}'", output: "true" },
-      { input: "s = '(]'", output: "false" }
+      { input: "S = 100, K = 95, r = 0.05, t = 0.5, sigma = 0.2", output: "0.5515" },
+      { input: "S = 50, K = 50, r = 0.06, t = 1.0, sigma = 0.3", output: "0.3500" }
     ],
-    validatorCode: "stack.push, stack.append"
+    validatorCode: "Math.log, math.log"
   }
 ];
 
@@ -174,50 +223,50 @@ export const DEFAULT_INTERVIEWERS: InterviewerProfile[] = [
   {
     id: InterviewerPersonality.Friendly,
     name: "Friendly Coach",
-    role: "Supportive Mentor",
-    description: "Encouraging and constructive. Helps you with gentle hints, focusing heavily on confidence building.",
+    role: "Actuarial Associate Mentor",
+    description: "Encouraging and constructive. Helps you with gentle hints on IAI/IFoA principles, focusing heavily on confidence building.",
     avatar: "🌸"
   },
   {
     id: InterviewerPersonality.Strict,
     name: "Strict Evaluator",
-    role: "No-Nonsense Lead",
-    description: "Highly formal, rigorous, and quick to spot structural gaps. Mimics high-pressure elite stress tests.",
+    role: "No-Nonsense Lead Actuary",
+    description: "Highly formal, rigorous, and quick to spot structural capital gaps. Mimics high-pressure peer reviews.",
     avatar: "👤"
   },
   {
     id: InterviewerPersonality.RealHR,
     name: "HR Recruiter",
-    role: "Culture Matcher",
-    description: "Speaks elegantly. Analyzes personal integrity, communication, behavioral growth, and team culture.",
+    role: "Insurance Group HR Lead",
+    description: "Speaks elegantly. Analyzes personal integrity, communication, professional standards (APS), and corporate team culture.",
     avatar: "💼"
   },
   {
     id: InterviewerPersonality.SeniorEngineer,
-    name: "Tech Lead",
-    role: "Senior System Architect",
-    description: "Focuses deeply on code quality, design patterns, algorithmic optimization, and technical depth.",
+    name: "Actuarial Tech Lead",
+    role: "Senior Model & System Architect",
+    description: "Focuses deeply on code quality in Python/R, database management, and building automated reporting pipelines.",
     avatar: "💻"
   },
   {
     id: InterviewerPersonality.HiringManager,
     name: "Hiring Manager",
-    role: "Product & Engineering Director",
-    description: "Bridges technical accuracy with business value. Evaluates project scope, delivery, and roadmap thinking.",
+    role: "Head of Pricing & Underwriting",
+    description: "Bridges technical premium calculations with commercial value. Evaluates pricing models, retention levels, and portfolio growth.",
     avatar: "⚙️"
   },
   {
     id: InterviewerPersonality.Partner,
     name: "Partner",
-    role: "Executive Consultant",
-    description: "Focuses on strategic commercial alignment, client relationships, case study results, and leadership vision.",
+    role: "Consulting Partner (Actuarial Practice)",
+    description: "Focuses on strategic commercial alignment, financial reports, client relationships, and high-level executive vision.",
     avatar: "🎯"
   },
   {
     id: InterviewerPersonality.Actuary,
     name: "Chief Actuary",
-    role: "Capital & Risk Lead",
-    description: "Specialized in actuarial mathematical modeling, reserving, GLM pricing, and IFRS17 requirements.",
+    role: "Capital & Risk Executive Lead",
+    description: "Specialized in complex mathematical modeling, reserving techniques, GLM, risk margins, Solvency II, and IFRS 17 guidelines.",
     avatar: "📈"
   }
 ];

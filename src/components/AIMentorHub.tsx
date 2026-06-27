@@ -268,33 +268,33 @@ export default function AIMentorHub({
   const [flashcards, setFlashcards] = useState<Flashcard[]>([
     {
       id: "f-1",
-      category: "Quantitative",
-      question: "What is Bayes' Theorem formula, and what does it calculate?",
-      answer: "P(A|B) = [P(B|A) * P(A)] / P(B)\n\nIt calculates the conditional probability of event A occurring given that event B has occurred, updating prior beliefs with objective observational evidence."
+      category: "Finance & Risk",
+      question: "Under what conditions of claims development would you prefer the Bornhuetter-Ferguson method over Chain Ladder reserving?",
+      answer: "Bornhuetter-Ferguson combines observed claims with an a priori expected loss ratio. It is highly preferred for immature/young origin years where claim data is sparse or highly volatile, or when launching a new insurance product where historical development factors are unstable."
     },
     {
       id: "f-2",
-      category: "System Design",
-      question: "Explain the CAP Theorem and its three fundamental trade-offs.",
-      answer: "A distributed system can guarantee at most two of three criteria:\n\n1. Consistency (C): Every read returns the most recent write.\n2. Availability (A): Every non-failing node returns a response.\n3. Partition Tolerance (P): The system continues operating despite message losses.\n\nIn partition cases, you must choose either Consistency (CP) or Availability (AP)."
+      category: "Quantitative",
+      question: "What is the key difference between CS1 and CS2 Actuarial Statistics papers?",
+      answer: "CS1 covers fundamental Actuarial Statistics (probability distributions, statistical inference, Bayesian statistics, and Generalized Linear Models). CS2 focuses on advanced Actuarial Statistics (survival models, Markov chains, stochastic processes, time series modeling, and machine learning/claims clustering)."
     },
     {
       id: "f-3",
-      category: "Behavioral",
-      question: "What are the components of the STAR Method for behavioral interview answers?",
-      answer: "STAR stands for:\n\n1. Situation: Set the scene and context.\n2. Task: Describe your responsibility in the scenario.\n3. Action: Detail the explicit steps you personally executed.\n4. Result: State the quantified business outcomes and metrics achieved."
+      category: "Finance & Risk",
+      question: "Explain what the 'Contract Service Margin' (CSM) represents under IFRS 17 guidelines.",
+      answer: "CSM represents the unearned profit of a group of insurance contracts that the insurer will recognize as it provides services in the future. It prevents insurers from booking all profit at inception, ensuring earnings are recognized over the coverage period."
     },
     {
       id: "f-4",
-      category: "Finance & Risk",
-      question: "What is the capital asset pricing model (CAPM) formula and purpose?",
-      answer: "Expected Return = Rf + β * (Rm - Rf)\n\nWhere Rf is risk-free rate, β is asset sensitivity, and Rm is market return.\n\nIt calculates the theoretically appropriate required rate of return of an asset, accounting for systematic portfolio risk."
+      category: "Quantitative",
+      question: "Explain the classic CM1 life contingencies notation: a_x:\\bar{n}|",
+      answer: "This represents the expected present value (EPV) of an n-year temporary life annuity-due of 1 paid annually to a life aged x. It pays a sum of 1 at the beginning of each year for a maximum of n years, provided the individual survives."
     },
     {
       id: "f-5",
-      category: "System Design",
-      question: "What is horizontal scaling vs vertical scaling?",
-      answer: "Vertical Scaling: Adding more power (CPU, RAM, Storage) to a single machine.\nHorizontal Scaling: Adding more machines to your network pool, distributing database load through sharding, routing, and horizontal replicas."
+      category: "Behavioral",
+      question: "How does the CP3 Communication exam recommend structuring complex actuarial results for non-actuarial corporate boards?",
+      answer: "Under CP3 standards, you should:\n1. Lead with the core strategic recommendation.\n2. Avoid technical jargon (like force of mortality, copulas, or link ratios); use lay terms like 'death rate' or 'safety margins'.\n3. Supplement with simple visual tables detailing the high, medium, and low impact scenarios."
     }
   ]);
 
@@ -320,39 +320,32 @@ export default function AIMentorHub({
   const [searchFormulaQuery, setSearchFormulaQuery] = useState("");
   const cheatSheets: CheatSheetItem[] = [
     {
-      title: "Bayes' Theorem",
-      category: "Probability",
-      formula: "P(A|B) = [ P(B|A) * P(A) ] / P(B)",
-      explanation: "Calculates updated conditional probability based on prior probability parameters and new observations.",
-      example: "Used in medical diagnostic false-positives and spam filtering algorithms."
+      title: "Annuity EPV (CM1)",
+      category: "Quantitative",
+      formula: "a_x = sum_{t=0}^inf ( v^t * t_p_x )",
+      explanation: "EPV of a whole life annuity-due of 1 paid annually to a life aged x, where v = 1/(1+i) and t_p_x is the probability of survival.",
+      example: "Core calculation for pricing life annuity contracts and retirement fund valuation."
     },
     {
-      title: "Black-Scholes Options Model",
+      title: "Constant Force of Mortality (CS2)",
+      category: "Quantitative",
+      formula: "t_p_x = e^(-mu * t)",
+      explanation: "Probability that a life aged x survives for t years, under a constant force of mortality mu.",
+      example: "Used to model quick term assurances and critical illness product risk pools."
+    },
+    {
+      title: "Bornhuetter-Ferguson Reserve (SP7)",
       category: "Finance & Risk",
-      formula: "C = S * N(d1) - K * e^(-r*t) * N(d2)",
-      explanation: "A mathematical valuation model used to calculate the theoretical pricing of European call and put options.",
-      example: "Employed globally by insurance funds and financial desks for option pricing valuations."
+      formula: "Reserve = Ultimate Claims * (1 - 1/f_t)",
+      explanation: "Calculates the outstanding claims reserve as a function of the a priori expected loss ratio, where f_t is the cumulative development factor.",
+      example: "Used in property and general liability reserves where initial claim details are highly volatile."
     },
     {
-      title: "Compound Interest Metric",
-      category: "Aptitude Mathematics",
-      formula: "A = P * (1 + r/n)^(n*t)",
-      explanation: "Isolates the future value of an initial investment principal under compound interest cycles.",
-      example: "Priceless calculation in bank placement tests and financial aptitude questions."
-    },
-    {
-      title: "Amdahl's Law",
-      category: "System Design",
-      formula: "Latency(S) = 1 / [ (1 - p) + (p / s) ]",
-      explanation: "Estimates the theoretical speedup of execution of a program when utilizing horizontal parallel processors.",
-      example: "Used to justify high-performance computing clusters and multi-core architectures."
-    },
-    {
-      title: "Weighted Average Cost of Capital (WACC)",
-      category: "Corporate Valuation",
-      formula: "WACC = (E/V * Re) + (D/V * Rd * (1 - Tc))",
-      explanation: "Calculates a firm's average cost of raising financing across equity, debt, and corporate tax rates.",
-      example: "Strategic metric in consulting profitability frameworks and corporate accounting interviews."
+      title: "Solvency Capital Requirement (SCR)",
+      category: "Finance & Risk",
+      formula: "SCR = sqrt( sum( sum( Corr_ij * Risk_i * Risk_j ) ) )",
+      explanation: "Calculates the target capital needed under Solvency II / IAI guidelines to limit probability of ruin to 0.5% over 1 year using risk correlation matrices.",
+      example: "Required capital calculation filed annually by risk acts for supervisory reviews."
     }
   ];
 
@@ -372,39 +365,39 @@ export default function AIMentorHub({
   const quizQuestions: QuizQuestion[] = [
     {
       id: "q-1",
-      question: "Which pattern is used to distribute database write loads horizontally across multiple database node clusters?",
+      question: "In IAI/IFoA CM1 Financial Mathematics, how is the nominal interest rate i^(p) convertible p-ly related to the effective annual interest rate i?",
       options: [
-        "Horizontal Database Sharding",
-        "Distributed In-Memory Caching",
-        "Single-Leader Replication logs",
-        "Continuous Database Compression"
+        "i = (1 + i^(p)/p)^p - 1",
+        "i = (1 + p * i^(p))^p - 1",
+        "i = (1 + i^(p))^p - 1",
+        "i = i^(p) / p"
       ],
       answerIndex: 0,
-      explanation: "Database sharding partitions database rows and schemas across multiple node clusters, effectively scaling write and storage capacity horizontally."
+      explanation: "The effective annual interest rate i and nominal interest rate convertible p-ly are related by: 1 + i = (1 + i^(p)/p)^p."
     },
     {
       id: "q-2",
-      question: "A company doubles its parallel server counts from 2 to 4. If only 40% of the program can be parallelized, what is the maximum speedup estimated by Amdahl's Law?",
+      question: "Under the IFRS 17 standard, which building block is used to represent the present value of future cash flows adjusted for the time value of money and financial risks?",
       options: [
-        "1.25x speedup",
-        "1.43x speedup",
-        "2.00x speedup",
-        "1.67x speedup"
+        "Best Estimate Liabilities (BEL)",
+        "Contract Service Margin (CSM)",
+        "Risk Adjustment for Non-Financial Risk",
+        "Fulfillment Cash Flows (FCF)"
       ],
-      answerIndex: 1,
-      explanation: "By Amdahl's Law: Latency = 1 / [(1 - 0.4) + (0.4 / 2)] = 1.25 for 2 cores, and 1 / [(1 - 0.4) + (0.4 / 4)] = 1 / [0.6 + 0.1] = 1 / 0.7 ≈ 1.43x speedup."
+      answerIndex: 0,
+      explanation: "The Best Estimate Liabilities (BEL) represents the expected present value of future cash outflows less inflows, discounted using a risk-free yield curve."
     },
     {
       id: "q-3",
-      question: "Which of the following behavioral answers best structures the STAR Framework outcome criteria?",
+      question: "Which paper under the IAI & IFoA curriculum focuses on communication guidelines, teaching actuaries how to present complex financial and mathematical results clearly to non-actuarial boards?",
       options: [
-        "Explaining that the overall task was highly stressful and fast-paced",
-        "Stating: 'We launched the API and boosted daily active queries by 24% in Week 2'",
-        "Listing all team members who contributed to writing code modules",
-        "Describing the general business history of the company in detail"
+        "CP1 Actuarial Practice",
+        "CP2 Modelling Practice",
+        "CP3 Communication Practice",
+        "SP9 Enterprise Risk Management"
       ],
-      answerIndex: 1,
-      explanation: "The STAR Framework's 'Result' criteria requires quantified, clear business outcomes like 'boosted active queries by 24% in Week 2'."
+      answerIndex: 2,
+      explanation: "CP3 is the dedicated Communication Practice exam under the IAI & IFoA curriculum, testing the ability to translate complex model designs into lay summaries."
     }
   ];
 

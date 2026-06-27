@@ -175,7 +175,13 @@ export default function QuestionBankHub({ resumes, jds, onStartCompanyMock, onAd
         throw new Error("Failed evaluating your practice run");
       }
 
-      const evalData = await response.json();
+      const resText = await response.text();
+      let evalData;
+      try {
+        evalData = JSON.parse(resText);
+      } catch (e) {
+        throw new Error("Invalid response format received from evaluation agent.");
+      }
       setEvaluationResult(evalData);
       onAddXp(50); // reward practice completion!
     } catch (err) {

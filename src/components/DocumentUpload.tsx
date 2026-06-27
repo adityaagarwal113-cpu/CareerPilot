@@ -53,6 +53,38 @@ export default function DocumentUpload({
   // Drag & drop mock state
   const [dragActive, setDragActive] = useState(false);
 
+  const [resumeFileDetails, setResumeFileDetails] = useState<{ name: string; size: number } | null>(null);
+  const [jdFileDetails, setJdFileDetails] = useState<{ name: string; size: number } | null>(null);
+
+  const readAndParseText = async (file: File): Promise<string> => {
+    const rawText = await file.text();
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    if (isPdf) {
+      // Decode printable text from the PDF file's literal streams
+      const matches = rawText.match(/\(([^)]+)\)/g);
+      if (matches && matches.length > 5) {
+        const cleaned = matches
+          .map(m => m.slice(1, -1))
+          .filter(t => t.trim().length > 1 && !t.includes("font") && !t.includes("PDF") && !t.includes("/Obj") && !t.includes("ProcSet"))
+          .join(" ")
+          .replace(/\\([\d]{3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)))
+          .replace(/\\/g, "");
+        if (cleaned.trim().length > 100) {
+          return cleaned;
+        }
+      }
+      // Fallback: strip binary markers and return words
+      const textOnly = rawText
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, " ")
+        .replace(/[^a-zA-Z0-9\s,.\-@_()]/g, "")
+        .replace(/\s+/g, " ");
+      if (textOnly.trim().length > 100) {
+        return textOnly.substring(0, 15000);
+      }
+    }
+    return rawText;
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -70,15 +102,18 @@ export default function DocumentUpload({
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const text = await file.text();
+      const parsedText = await readAndParseText(file);
       const sanitizedName = file.name.replace(/\.[^/.]+$/, ""); // strip extension
+      const sizeInKb = Math.round(file.size / 1024);
       
       if (type === "resume") {
         setResumeName(sanitizedName);
-        setResumeText(text);
+        setResumeText(parsedText);
+        setResumeFileDetails({ name: file.name, size: sizeInKb });
       } else {
         setJdName(sanitizedName);
-        setJdText(text);
+        setJdText(parsedText);
+        setJdFileDetails({ name: file.name, size: sizeInKb });
       }
     }
   };
@@ -95,6 +130,7 @@ export default function DocumentUpload({
       await onAddResume(resumeName, resumeText);
       setResumeName("");
       setResumeText("");
+      setResumeFileDetails(null);
       // select the newly added resume automatically for matching
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to analyze resume. Make sure GEMINI_API_KEY is configured.");
@@ -115,6 +151,7 @@ export default function DocumentUpload({
       await onAddJd(jdName, jdText);
       setJdName("");
       setJdText("");
+      setJdFileDetails(null);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to analyze JD. Make sure GEMINI_API_KEY is configured.");
     } finally {
@@ -229,30 +266,53 @@ export default function DocumentUpload({
                   <p className="text-xs font-medium text-slate-600">Drag PDF, TXT or DOCX here</p>
                   <p className="text-[10px] text-slate-400">or click to choose file</p>
                 </div>
-                <input
+                 <input
                   type="file"
                   accept=".txt,.pdf,.docx"
                   onChange={async (e) => {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      const text = await file.text();
+                      const parsedText = await readAndParseText(file);
                       setResumeName(file.name.replace(/\.[^/.]+$/, ""));
-                      setResumeText(text);
+                      setResumeText(parsedText);
+                      setResumeFileDetails({ name: file.name, size: Math.round(file.size / 1024) });
                     }
                   }}
                   className="hidden"
                   id="resume-file-input"
                 />
-                <label htmlFor="resume-file-input" className="block text-slate-500 text-xs mt-2 hover:underline cursor-pointer">
+                <label htmlFor="resume-file-input" className="block text-slate-500 text-xs mt-2 hover:underline cursor-pointer font-bold text-brand-600">
                   Browse Files
                 </label>
               </div>
+
+              {resumeFileDetails && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                    <div className="truncate">
+                      <p className="font-bold truncate">{resumeFileDetails.name}</p>
+                      <p className="text-[10px] text-emerald-600">{resumeFileDetails.size} KB • Ready for Direct Analysis</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResumeText("");
+                      setResumeFileDetails(null);
+                    }}
+                    className="text-[10px] text-rose-600 hover:underline shrink-0"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-600">Resume Label / Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Aditya Agarwal - Principal Engineer"
+                  placeholder="e.g. Aditya Agarwal - Actuarial Associate"
                   value={resumeName}
                   onChange={(e) => setResumeName(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-brand-500 bg-slate-50/50"
@@ -261,15 +321,41 @@ export default function DocumentUpload({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">Paste Full Resume Text</label>
-                <textarea
-                  rows={8}
-                  placeholder="Paste whole resume content here..."
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-brand-500 bg-slate-50/50 font-mono"
-                  required
-                />
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-semibold text-slate-600">Resume Content Source</label>
+                  {resumeFileDetails && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      ✓ Direct PDF file used
+                    </span>
+                  )}
+                </div>
+                {!resumeFileDetails ? (
+                  <textarea
+                    rows={8}
+                    placeholder="Paste whole resume content here..."
+                    value={resumeText}
+                    onChange={(e) => setResumeText(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-brand-500 bg-slate-50/50 font-mono"
+                    required
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-indigo-50 border border-indigo-100/50 rounded-xl text-xs text-indigo-800 leading-relaxed font-semibold">
+                      ⚡ <strong>Perfect!</strong> Your uploaded PDF <strong>"{resumeFileDetails.name}"</strong> is being processed directly. There is absolutely no need to manually paste your CV text below.
+                    </div>
+                    <details className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/30">
+                      <summary className="text-[10px] font-bold text-slate-500 p-2 cursor-pointer hover:bg-slate-50 transition select-none">
+                        Show Extracted Text Preview ({resumeText.length} chars)
+                      </summary>
+                      <textarea
+                        rows={6}
+                        value={resumeText}
+                        onChange={(e) => setResumeText(e.target.value)}
+                        className="w-full text-[10px] p-2 focus:outline-none bg-slate-50 font-mono border-t border-slate-200"
+                      />
+                    </details>
+                  </div>
+                )}
               </div>
 
               <button
@@ -418,11 +504,68 @@ export default function DocumentUpload({
             <h3 className="font-display font-semibold text-slate-800 text-sm">Add Job Description</h3>
             
             <form onSubmit={handleAddJdSubmit} className="space-y-4">
+              {/* Drag n Drop Box */}
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={(e) => handleDrop(e, "jd")}
+                className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition ${
+                  dragActive ? "border-emerald-500 bg-emerald-50/40" : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <UploadCloud size={30} className={dragActive ? "text-emerald-500" : "text-slate-400"} />
+                  <p className="text-xs font-medium text-slate-600">Drag JD File (PDF, TXT, DOCX) here</p>
+                  <p className="text-[10px] text-slate-400">or click to choose file</p>
+                </div>
+                <input
+                  type="file"
+                  accept=".txt,.pdf,.docx"
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      const parsedText = await readAndParseText(file);
+                      setJdName(file.name.replace(/\.[^/.]+$/, ""));
+                      setJdText(parsedText);
+                      setJdFileDetails({ name: file.name, size: Math.round(file.size / 1024) });
+                    }
+                  }}
+                  className="hidden"
+                  id="jd-file-input"
+                />
+                <label htmlFor="jd-file-input" className="block text-slate-500 text-xs mt-2 hover:underline cursor-pointer font-bold text-emerald-600">
+                  Browse Files
+                </label>
+              </div>
+
+              {jdFileDetails && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                    <div className="truncate">
+                      <p className="font-bold truncate">{jdFileDetails.name}</p>
+                      <p className="text-[10px] text-emerald-600">{jdFileDetails.size} KB • Ready for Direct Analysis</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setJdText("");
+                      setJdFileDetails(null);
+                    }}
+                    className="text-[10px] text-rose-600 hover:underline shrink-0"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-600">Job Title / Company Label</label>
                 <input
                   type="text"
-                  placeholder="e.g. Google - Senior Frontend Architect"
+                  placeholder="e.g. LIC India - Assistant Pricing Actuary"
                   value={jdName}
                   onChange={(e) => setJdName(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-500 bg-slate-50/50"
@@ -431,15 +574,34 @@ export default function DocumentUpload({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">Paste Full Job Description Context</label>
-                <textarea
-                  rows={10}
-                  placeholder="Paste the target requirements, qualifications, and role responsibilities..."
-                  value={jdText}
-                  onChange={(e) => setJdText(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-500 bg-slate-50/50 font-mono"
-                  required
-                />
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-semibold text-slate-600">Job Description Text</label>
+                  {jdFileDetails && (
+                    <span className="text-[10px] text-emerald-600 font-bold">✓ Direct file used</span>
+                  )}
+                </div>
+                {!jdFileDetails ? (
+                  <textarea
+                    rows={8}
+                    placeholder="Paste full job description requirements here..."
+                    value={jdText}
+                    onChange={(e) => setJdText(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-500 bg-slate-50/50 font-mono"
+                    required
+                  />
+                ) : (
+                  <details className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/30">
+                    <summary className="text-[10px] font-bold text-slate-500 p-2 cursor-pointer hover:bg-slate-50 transition select-none">
+                      Show Extracted Job Text Preview ({jdText.length} chars)
+                    </summary>
+                    <textarea
+                      rows={6}
+                      value={jdText}
+                      onChange={(e) => setJdText(e.target.value)}
+                      className="w-full text-[10px] p-2 focus:outline-none bg-slate-50 font-mono border-t border-slate-200"
+                    />
+                  </details>
+                )}
               </div>
 
               <button

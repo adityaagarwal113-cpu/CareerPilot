@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  Layers, Plus, Briefcase, MapPin, DollarSign, Calendar, ChevronRight, 
+  Layers, Plus, Briefcase, MapPin, IndianRupee, Calendar, ChevronRight, 
   ChevronLeft, Trash2, Edit3, ArrowRight, TrendingUp, Sliders, Calculator, 
   CheckCircle, HelpCircle, Save, Star, Search, Filter, ShieldCheck, Heart
 } from "lucide-react";
@@ -36,50 +36,50 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
   const [jobs, setJobs] = useState<JobCard[]>([
     {
       id: "j-1",
-      company: "Google",
-      role: "AI Developer / SWE III",
-      salary: 165000,
-      equity: 120000, // over 4 yrs (30k/yr)
-      bonus: 25000,
-      location: "Mountain View, CA (Hybrid)",
+      company: "Milliman India",
+      role: "Actuarial Associate (CS1/CM1 Cleared)",
+      salary: 750000,
+      equity: 0,
+      bonus: 50000,
+      location: "Gurgaon, India",
       dateApplied: "2026-06-15",
-      notes: "ATS score match optimized at 94%. Recruiter initial screening call completed. Prepping for technical systems round.",
+      notes: "Applied under IAI credentials. Cleared CS1 & CM1 with scores above 80. High interest in the Life and Health consulting practice.",
       status: "Interviewing"
     },
     {
       id: "j-2",
-      company: "Stripe",
-      role: "Staff Full-Stack Architect",
-      salary: 190000,
-      equity: 160000,
-      bonus: 30000,
-      location: "San Francisco, CA (In-Office)",
+      company: "Swiss Re",
+      role: "Senior Actuarial Analyst (CS2/CM2 Cleared)",
+      salary: 1400000,
+      equity: 120000,
+      bonus: 150000,
+      location: "Bangalore, India (Hybrid)",
       dateApplied: "2026-06-18",
-      notes: "Tailored resume to highlight merchant ledger architecture and concurrency improvements. Applied through referral.",
+      notes: "Preparing for CS2/CM2 modeling concepts and reserving. Resume highlights advanced Generalized Linear Models (GLMs) in R and python.",
       status: "Applied"
     },
     {
       id: "j-3",
-      company: "Morgan Stanley",
-      role: "Senior Quantitative Associate",
-      salary: 175000,
-      equity: 40000,
-      bonus: 50000,
-      location: "New York, NY (In-Office)",
+      company: "HDFC ERGO General Insurance",
+      role: "Actuarial Pricing Specialist (CP1 Standing)",
+      salary: 1250000,
+      equity: 0,
+      bonus: 100000,
+      location: "Mumbai, India (Hybrid)",
       dateApplied: "2026-06-20",
-      notes: "Mathematical testing completed. High emphasis on option valuation matrices, multi-core threading, and Bayes' theorem.",
+      notes: "Offer received! Technical rounds assessed pricing methodologies and claim distribution modeling. Cleared 5 papers of IAI.",
       status: "Offer Secured"
     },
     {
       id: "j-4",
-      company: "McKinsey & Co",
-      role: "Associate Strategy Consultant",
-      salary: 160000,
+      company: "PwC India",
+      role: "Actuarial Consultant - Life & Reserving",
+      salary: 950000,
       equity: 0,
-      bonus: 40000,
-      location: "Chicago, IL",
+      bonus: 80000,
+      location: "Mumbai, India",
       dateApplied: "2026-06-10",
-      notes: "Researching profitability case trees. Bookmarked standard case frameworks inside our Mentor Question Bank.",
+      notes: "Priced life contingent annuities. Tracking Solvency II reserve frameworks. Cleared CS1, CS2, CM1, CM2.",
       status: "Bookmarked"
     }
   ]);
@@ -88,10 +88,10 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCompany, setNewCompany] = useState("");
   const [newRole, setNewRole] = useState(userRole || "");
-  const [newSalary, setNewSalary] = useState("120000");
+  const [newSalary, setNewSalary] = useState("800000");
   const [newEquity, setNewEquity] = useState("0");
   const [newBonus, setNewBonus] = useState("0");
-  const [newLocation, setNewLocation] = useState("Remote");
+  const [newLocation, setNewLocation] = useState("Mumbai, India");
   const [newNotes, setNewNotes] = useState("");
   const [newStatus, setNewStatus] = useState<JobCard["status"]>("Bookmarked");
 
@@ -136,10 +136,10 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
     // Reset form states
     setNewCompany("");
     setNewRole("");
-    setNewSalary("120000");
+    setNewSalary("800000");
     setNewEquity("0");
     setNewBonus("0");
-    setNewLocation("Remote");
+    setNewLocation("Mumbai, India");
     setNewNotes("");
     setShowAddForm(false);
   };
@@ -293,17 +293,17 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-500">Base Salary ($)</label>
+                  <label className="text-[11px] font-bold text-slate-500">Base Salary (₹ INR)</label>
                   <input
                     type="number"
-                    placeholder="120000"
+                    placeholder="800000"
                     value={newSalary}
                     onChange={(e) => setNewSalary(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 focus:outline-none focus:bg-white focus:border-brand-500 rounded-xl px-3.5 py-2 text-xs text-slate-700 font-mono"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-500">Equity Grant ($)</label>
+                  <label className="text-[11px] font-bold text-slate-500">Retainer/Lump Sum (₹)</label>
                   <input
                     type="number"
                     placeholder="0"
@@ -313,7 +313,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-500">Sign-on Bonus ($)</label>
+                  <label className="text-[11px] font-bold text-slate-500">Performance Bonus (₹)</label>
                   <input
                     type="number"
                     placeholder="0"
@@ -326,7 +326,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                   <label className="text-[11px] font-bold text-slate-500">Office Location</label>
                   <input
                     type="text"
-                    placeholder="SF, NYC, or Remote"
+                    placeholder="e.g. Mumbai, Gurgaon, Bangalore"
                     value={newLocation}
                     onChange={(e) => setNewLocation(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 focus:outline-none focus:bg-white focus:border-brand-500 rounded-xl px-3.5 py-2 text-xs text-slate-700"
@@ -419,9 +419,9 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                             <span className="truncate" title={job.location}>{job.location}</span>
                           </div>
                           <div className="flex items-center gap-1 font-mono text-slate-600 font-bold">
-                            <DollarSign size={10} className="text-emerald-500 shrink-0" />
-                            <span>{(job.salary / 1000).toFixed(0)}k Base</span>
-                            {job.bonus ? <span className="text-slate-400"> | +{(job.bonus / 1000).toFixed(0)}k Bonus</span> : null}
+                            <IndianRupee size={10} className="text-emerald-500 shrink-0" />
+                            <span>{(job.salary / 100000).toFixed(1)}L Base</span>
+                            {job.bonus ? <span className="text-slate-400"> | +{(job.bonus / 100000).toFixed(1)}L Bonus</span> : null}
                           </div>
                         </div>
 
@@ -509,7 +509,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                         <h5 className="text-xs font-black text-slate-800 truncate">{job.company}</h5>
                         <p className="text-[10px] text-slate-500 font-semibold truncate">{job.role}</p>
                         <span className="text-[9px] font-mono font-bold text-indigo-700 block">
-                          Annualized: ${(annualValue / 1000).toFixed(0)}k/yr
+                          Annualized: ₹{(annualValue / 100000).toFixed(2)} Lakhs/yr
                         </span>
                       </div>
                     </button>
@@ -535,7 +535,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                       <div key={job.id} className="space-y-2 text-xs font-semibold">
                         <div className="flex justify-between items-baseline flex-wrap">
                           <h5 className="font-black text-slate-800">{job.company} <span className="text-slate-400 font-normal">({job.role})</span></h5>
-                          <span className="font-mono font-black text-indigo-700 text-xs">${(grandTotal).toLocaleString()} / yr</span>
+                          <span className="font-mono font-black text-indigo-700 text-xs">₹{(grandTotal).toLocaleString('en-IN')} / yr</span>
                         </div>
 
                         {/* Bar chart stacks */}
@@ -544,7 +544,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                           <div 
                             className="bg-emerald-500 h-full flex items-center justify-center text-[8px] font-bold text-white transition-all truncate" 
                             style={{ width: `${(annualBase / grandTotal) * percentageOfMax}%` }}
-                            title={`Base: $${annualBase.toLocaleString()}`}
+                            title={`Base: ₹${annualBase.toLocaleString('en-IN')}`}
                           >
                             Base
                           </div>
@@ -553,9 +553,9 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                             <div 
                               className="bg-sky-500 h-full flex items-center justify-center text-[8px] font-bold text-white transition-all truncate" 
                               style={{ width: `${(annualEquity / grandTotal) * percentageOfMax}%` }}
-                              title={`Equity: $${annualEquity.toLocaleString()}`}
+                              title={`Retainer: ₹${annualEquity.toLocaleString('en-IN')}`}
                             >
-                              Equity
+                              Retainer
                             </div>
                           )}
                           {/* Bonus */}
@@ -563,7 +563,7 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                             <div 
                               className="bg-amber-500 h-full flex items-center justify-center text-[8px] font-bold text-white transition-all truncate" 
                               style={{ width: `${(annualBonus / grandTotal) * percentageOfMax}%` }}
-                              title={`Bonus: $${annualBonus.toLocaleString()}`}
+                              title={`Bonus: ₹${annualBonus.toLocaleString('en-IN')}`}
                             >
                               Bonus
                             </div>
@@ -572,9 +572,9 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
 
                         {/* Legends and detailed matrix totals */}
                         <div className="grid grid-cols-3 gap-2 text-[9px] font-bold text-slate-400 font-mono">
-                          <div>🟢 Base Salary: ${annualBase.toLocaleString()}</div>
-                          <div>🔵 Annual Equity: ${annualEquity.toLocaleString()}</div>
-                          <div>🟡 Annualized Bonus: ${annualBonus.toLocaleString()}</div>
+                          <div>🟢 Base Salary: ₹{annualBase.toLocaleString('en-IN')}</div>
+                          <div>🔵 Retainer/Lump Sum: ₹{annualEquity.toLocaleString('en-IN')}</div>
+                          <div>🟡 Performance Bonus: ₹{annualBonus.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
                     );
@@ -584,9 +584,9 @@ export default function ApplicationTracker({ userRole, onAddXp, onBackToDashboar
                   <div className="p-4 bg-indigo-50 border border-indigo-100/50 rounded-xl flex gap-3 text-xs leading-relaxed text-slate-600">
                     <TrendingUp className="text-indigo-600 shrink-0 mt-0.5 animate-pulse" size={16} />
                     <div className="space-y-1">
-                      <p className="font-bold text-slate-800">Recruitment Negotiation Analytics:</p>
+                      <p className="font-bold text-slate-800">Actuarial Placement Negotiation Strategy:</p>
                       <p>
-                        When comparing packages, notice the liquidity: Stripe has higher base cash whereas MS offers substantial upfront performance bonuses. Use Stripe's higher base package offer to negotiate Google's sign-on cash metrics or raise MS's base allocation by 10%.
+                        When negotiating actuarial salaries, leverage your paper clearance standing (e.g., clearing IAI CS/CM series or IFoA CP series). For instance, Swiss Re's higher performance-based package can be used to negotiate a higher base salary with Milliman, or you can request additional study leave/exam fee reimbursement from PwC.
                       </p>
                     </div>
                   </div>

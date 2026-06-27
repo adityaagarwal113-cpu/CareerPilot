@@ -39,6 +39,12 @@ interface UserProfileSettingsProps {
   userBadges: string[];
   activeTab: "account" | "career" | "entities" | "settings" | "badges";
   setActiveTab: (tab: "account" | "career" | "entities" | "settings" | "badges") => void;
+  examsCleared?: number;
+  setExamsCleared?: (val: number) => void;
+  paperNames?: string;
+  setPaperNames?: (val: string) => void;
+  actuarialBoard?: string;
+  setActuarialBoard?: (val: string) => void;
 }
 
 interface BadgeDefinition {
@@ -104,7 +110,10 @@ export default function UserProfileSettings({
   storedPassword, setStoredPassword, careerPrefs, setCareerPrefs, userSettings, setUserSettings,
   savedCompanies, setSavedCompanies, savedJobRoles, setSavedJobRoles, isSyncing, lastSyncedTime,
   handleCloudSync, showLogoutConfirm, setShowLogoutConfirm, onStandardLogout, onForgetAndLogout,
-  userBadges, activeTab, setActiveTab
+  userBadges, activeTab, setActiveTab,
+  examsCleared = 3, setExamsCleared,
+  paperNames = "CS1, CM1, CB1", setPaperNames,
+  actuarialBoard = "IAI", setActuarialBoard
 }: UserProfileSettingsProps) {
   const badgeDates = React.useMemo(() => {
     try {
@@ -301,6 +310,62 @@ export default function UserProfileSettings({
           <div className="space-y-4 text-xs text-left" id="career-goals-settings">
             <h4 className="font-display font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">Target Career Preferences</h4>
             
+            {/* Actuarial Credentials */}
+            <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl space-y-3">
+              <h5 className="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                <Award size={14} className="text-indigo-600" />
+                IAI & IFoA Credentials Setup
+              </h5>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="font-bold text-slate-500 uppercase tracking-wide text-[9px]">Actuarial Board / Affiliation</label>
+                  <select
+                    value={actuarialBoard}
+                    onChange={(e) => {
+                      setActuarialBoard?.(e.target.value);
+                      localStorage.setItem("platform_actuarial_board", e.target.value);
+                    }}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none"
+                  >
+                    <option value="IAI">Institute of Actuaries of India (IAI)</option>
+                    <option value="IFoA">Institute and Faculty of Actuaries UK (IFoA)</option>
+                    <option value="Both">Both (IAI & IFoA UK)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="font-bold text-slate-500 uppercase tracking-wide text-[9px]">Exams Cleared</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="15"
+                    value={examsCleared}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 0;
+                      setExamsCleared?.(val);
+                      localStorage.setItem("platform_exams_cleared", val.toString());
+                    }}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="font-bold text-slate-500 uppercase tracking-wide text-[9px]">Paper Codes (e.g. CS1, CM1)</label>
+                  <input
+                    type="text"
+                    value={paperNames}
+                    onChange={(e) => {
+                      setPaperNames?.(e.target.value);
+                      localStorage.setItem("platform_paper_names", e.target.value);
+                    }}
+                    placeholder="e.g. CS1, CM1, CB1"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-500 uppercase tracking-wide text-[9px]">Experience Level</label>

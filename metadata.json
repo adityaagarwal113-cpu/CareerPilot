@@ -1,6 +1,6 @@
 {
-  "name": "AI Career Operating System",
-  "description": "A world-class AI Career Operating System spanning career roadmaps, resume intelligence, learning modules, aptitude tests, coding sandbox environments, adaptive mock interviews, and personalized coaching.",
-  "requestFramePermissions": ["microphone"],
+  "name": "ActuaryPrep",
+  "description": "An elite actuarial science preparation portal tailored to IAI & IFoA exam syllabus. Features mock pricing/reserving interviews, quantitative aptitude (CS1, CM1), coding sandbox (R/Python for CS2, CP2), interactive roadmap, and chief actuary mentor.",
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

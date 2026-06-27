@@ -83,6 +83,7 @@ export default function CareerRoadmap({
   // Interactive / Tracking States
   const [activeTab, setActiveTab] = useState<"overview" | "gaps" | "milestones" | "projects" | "negotiation">("overview");
   const [expandedMilestone, setExpandedMilestone] = useState<number>(0);
+  const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
 
   // Initialize form default values from user profile info
   useEffect(() => {
@@ -91,6 +92,8 @@ export default function CareerRoadmap({
     }
     if (userRole && !targetRole) {
       setTargetRole(userRole);
+    } else if (!targetRole) {
+      setTargetRole("Actuarial Associate (CS1/CM1 Cleared)");
     }
     if (careerPrefs) {
       if (careerPrefs.industry && !targetIndustry) {
@@ -100,8 +103,8 @@ export default function CareerRoadmap({
         setTargetSalary(careerPrefs.expectedSalary);
       }
     } else {
-      setTargetSalary("$150,000");
-      setTargetIndustry("Technology");
+      setTargetSalary("₹12,00,000 - ₹18,00,000");
+      setTargetIndustry("Life Insurance");
     }
   }, [resumes, userRole, careerPrefs]);
 
@@ -238,9 +241,13 @@ export default function CareerRoadmap({
   };
 
   const handleClearRoadmap = () => {
-    if (window.confirm("Are you sure you want to clear this generated career roadmap path? Your progress will be reset.")) {
+    if (!isConfirmingClear) {
+      setIsConfirmingClear(true);
+      setTimeout(() => setIsConfirmingClear(false), 3000); // Reset confirmation state after 3 seconds
+    } else {
       localStorage.removeItem("career_os_roadmap");
       setRoadmap(null);
+      setIsConfirmingClear(false);
     }
   };
 
@@ -321,10 +328,15 @@ export default function CareerRoadmap({
             </div>
             <button
               onClick={handleClearRoadmap}
-              className="p-2.5 hover:bg-rose-50 hover:text-rose-600 text-slate-400 rounded-xl border border-slate-200/60 transition cursor-pointer"
-              title="Clear & Start New Roadmap"
+              className={`px-3 py-2 text-xs font-bold rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
+                isConfirmingClear 
+                  ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 animate-pulse" 
+                  : "hover:bg-rose-50 hover:text-rose-600 text-slate-400 border-slate-200/60"
+              }`}
+              title={isConfirmingClear ? "Click again to confirm clear" : "Clear & Start New Roadmap"}
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} />
+              {isConfirmingClear && <span>Confirm Clear?</span>}
             </button>
           </div>
         )}
@@ -377,7 +389,7 @@ export default function CareerRoadmap({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Senior Machine Learning Engineer"
+                  placeholder="e.g. Actuarial Associate"
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200/80 focus:outline-none focus:bg-white focus:border-brand-500 rounded-xl px-4 py-2.5 text-xs text-slate-700"
@@ -389,7 +401,7 @@ export default function CareerRoadmap({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Artificial Intelligence Services"
+                  placeholder="e.g. Life Insurance, Pensions, General Insurance"
                   value={targetIndustry}
                   onChange={(e) => setTargetIndustry(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200/80 focus:outline-none focus:bg-white focus:border-brand-500 rounded-xl px-4 py-2.5 text-xs text-slate-700"
@@ -399,11 +411,11 @@ export default function CareerRoadmap({
 
             {/* Expected Compensation */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider">4. Expected Salary Goals ($)</label>
+              <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider">4. Expected Salary Goals (₹ INR)</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. $180,000 - $210,000"
+                placeholder="e.g. ₹12,00,000 - ₹18,00,000"
                 value={targetSalary}
                 onChange={(e) => setTargetSalary(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200/80 focus:outline-none focus:bg-white focus:border-brand-500 rounded-xl px-4 py-2.5 text-xs text-slate-700 font-mono font-bold"
@@ -929,12 +941,12 @@ export default function CareerRoadmap({
                   <div className="space-y-1.5 pt-2">
                     <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Estimated Market Range:</span>
                     <span className="text-sm font-black text-slate-800 font-mono block">
-                      {roadmap.salaryInsights?.marketRange || "$150k - $220k"}
+                      {roadmap.salaryInsights?.marketRange || "₹12,00,000 - ₹25,00,000"}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white border border-slate-200/60 rounded-xl text-[10px] text-slate-500 leading-relaxed font-semibold">
-                    💡 <span className="text-slate-700 font-extrabold">Negotiation Pro Tip:</span> Always align your salary requests with direct metric results. Highlight the concrete features ticked off inside your curated Project Blueprint!
+                    💡 <span className="text-slate-700 font-extrabold">Negotiation Pro Tip:</span> Always align your salary requests with direct exam standing and project outcomes. Highlight the concrete models ticked off inside your curated Project Lab!
                   </div>
                 </div>
 
@@ -942,7 +954,7 @@ export default function CareerRoadmap({
                 <div className="lg:col-span-8 space-y-3">
                   <h4 className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Compensation Negotiation Playbook:</h4>
                   <div className="p-4 bg-teal-50/30 border border-teal-100/30 rounded-2xl text-xs text-slate-600 font-semibold leading-relaxed whitespace-pre-line">
-                    {roadmap.salaryInsights?.strategyText || "Focus on establishing concrete value proof. Close the technical gaps analyzed inside our Roadmap Suite, and show up to interviews with actual operational microservices hosted on GitHub."}
+                    {roadmap.salaryInsights?.strategyText || "Focus on establishing concrete mathematical value proof. Clear the target IAI/IFoA actuarial exam papers analyzed inside our Roadmap Suite, and show up to interview assessments with actual statistical models hosted on GitHub."}
                   </div>
                 </div>
 
