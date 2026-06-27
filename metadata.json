@@ -1,0 +1,6 @@
+{
+  "name": "AI Career Operating System",
+  "description": "A world-class AI Career Operating System spanning career roadmaps, resume intelligence, learning modules, aptitude tests, coding sandbox environments, adaptive mock interviews, and personalized coaching.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

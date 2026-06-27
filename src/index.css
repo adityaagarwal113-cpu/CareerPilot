@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300..900;1,300..900&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-50: #f5f8ff;
+  --color-brand-100: #ebf1ff;
+  --color-brand-200: #d6e3ff;
+  --color-brand-300: #b4ccff;
+  --color-brand-400: #86abff;
+  --color-brand-500: #4a7aff;
+  --color-brand-600: #385ceb;
+  --color-brand-700: #2b46d4;
+  --color-brand-800: #2539af;
+  --color-brand-900: #23348c;
+  --color-brand-950: #151e54;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Base body styles for smooth transitions */
+body {
+  @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-blue-900;
+}
+
+/* Highly polished print stylesheet for professional PDF exports */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  #report-viewer-panel {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  /* Hide noisy UI pieces */
+  button, select, input, .print\:hidden, [role="button"] {
+    display: none !important;
+  }
+  /* Formatting page containers */
+  .bg-white, .bg-slate-50 {
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    border-color: #e2e8f0 !important;
+  }
+  .text-white {
+    color: #1e293b !important;
+  }
+  .border {
+    border-color: #cbd5e1 !important;
+  }
+  /* Force page break for study plans to start on fresh pages */
+  #ai-study-planner {
+    page-break-before: always;
+    margin-top: 2rem;
+  }
+}
