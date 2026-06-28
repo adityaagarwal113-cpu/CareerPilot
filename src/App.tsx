@@ -8,7 +8,7 @@ import {
   Briefcase, FileText, Settings, Play, Award, HelpCircle, User, LogOut, 
   Sparkles, Bell, Check, BookOpen, Layers, LogIn, Mail, ShieldAlert, ChevronRight,
   Lock, RefreshCw, ChevronLeft, Sliders, ArrowLeft, ArrowRight,
-  LayoutDashboard, Compass, Terminal, Trello, Menu, X, MessageSquare, Radio, Users, Shield
+  LayoutDashboard, Compass, Terminal, Menu, X, MessageSquare, Radio, Users, Shield, ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -28,14 +28,14 @@ import QuestionBankHub from "./components/QuestionBankHub";
 import AIMentorHub from "./components/AIMentorHub";
 import UserProfileSettings from "./components/UserProfileSettings";
 import CodingSandbox from "./components/CodingSandbox";
-import ApplicationTracker from "./components/ApplicationTracker";
-import CareerRoadmap from "./components/CareerRoadmap";
 import { RecruiterDashboard } from "./components/RecruiterDashboard";
 import CVBuilder from "./components/CVBuilder";
+import AdminPanel from "./components/AdminPanel";
 import { 
   DEFAULT_QUESTIONS, DEFAULT_APTITUDE_QUESTIONS, DEFAULT_CODING_PROBLEMS, DEFAULT_INTERVIEWERS,
   QuestionItem, AptitudeQuestion, CodingProblem, InterviewerProfile
 } from "./lib/defaultData";
+import { LocalModelProvider } from "./lib/LocalModelProvider";
 
 export default function App() {
   // Navigation Router: "dashboard" | "upload" | "setup" | "interview" | "report" | "profile"
@@ -57,7 +57,6 @@ export default function App() {
       questionbank: true,
       coding: false,
       setup: true,
-      roadmap: true,
       tracker: true,
     };
   });
@@ -73,7 +72,7 @@ export default function App() {
 
   // Helper order to compare positions for animations
   const getTabOrderIndex = (tab: string) => {
-    const order = ["dashboard", "upload", "roadmap", "setup", "assessment", "questionbank", "mentor", "coding", "tracker", "recruit", "interview", "report"];
+    const order = ["dashboard", "upload", "setup", "assessment", "questionbank", "mentor", "coding", "recruit", "interview", "report"];
     return order.indexOf(tab);
   };
 
@@ -127,8 +126,8 @@ export default function App() {
     setUserPortalMode(mode);
     localStorage.setItem("platform_portal_mode", mode);
     if (mode === "admin") {
-      setActiveTab("recruit");
-      setNavHistory(["recruit"]);
+      setActiveTab("admin");
+      setNavHistory(["admin"]);
     } else {
       setActiveTab("dashboard");
       setNavHistory(["dashboard"]);
@@ -200,7 +199,8 @@ export default function App() {
     emailNotifications: true,
     smsNotifications: false,
     language: "English",
-    dailyReminderHour: 9
+    dailyReminderHour: 9,
+    useLocalLLM: false
   });
 
   // --- Dynamic Platform Datasets States ---
@@ -620,42 +620,58 @@ export default function App() {
     const boundResume = resumes.find(r => r.id === config.resumeId)?.parsedData;
     const boundJd = jds.find(j => j.id === config.jdId)?.parsedData;
 
-    const response = await fetch("/api/generate-questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        resume: boundResume,
-        jd: boundJd,
+    let generatedQuestions: InterviewQuestion[] = [];
+
+    if (userSettings.useLocalLLM) {
+      triggerNotification("Local WebLLM Active", "Initializing local Llama model...", "reminder");
+      const localData = await LocalModelProvider.generateQuestions({
         mode: config.mode,
         difficulty: config.difficulty,
         personality: config.personality,
+        resume: boundResume,
+        jd: boundJd,
         company: config.company,
         actuarialFocus: config.actuarialFocus
-      })
-    });
+      });
+      generatedQuestions = localData.questions;
+    } else {
+      const response = await fetch("/api/generate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume: boundResume,
+          jd: boundJd,
+          mode: config.mode,
+          difficulty: config.difficulty,
+          personality: config.personality,
+          company: config.company,
+          actuarialFocus: config.actuarialFocus
+        })
+      });
 
-    if (!response.ok) {
-      let errMsg = "Failed to generate interview space.";
-      try {
-        const errText = await response.text();
+      if (!response.ok) {
+        let errMsg = "Failed to generate interview space.";
         try {
-          const errData = JSON.parse(errText);
-          errMsg = errData.error || errMsg;
-        } catch (e) {
-          errMsg = errText || errMsg;
-        }
-      } catch (e) {}
-      throw new Error(errMsg);
-    }
+          const errText = await response.text();
+          try {
+            const errData = JSON.parse(errText);
+            errMsg = errData.error || errMsg;
+          } catch (e) {
+            errMsg = errText || errMsg;
+          }
+        } catch (e) {}
+        throw new Error(errMsg);
+      }
 
-    let data;
-    try {
-      const resText = await response.text();
-      data = JSON.parse(resText);
-    } catch (e) {
-      throw new Error("Unable to parse generated interview questions. Please try again.");
+      let data;
+      try {
+        const resText = await response.text();
+        data = JSON.parse(resText);
+      } catch (e) {
+        throw new Error("Unable to parse generated interview questions. Please try again.");
+      }
+      generatedQuestions = data.questions || [];
     }
-    const generatedQuestions: InterviewQuestion[] = data.questions || [];
 
     if (generatedQuestions.length === 0) {
       throw new Error("No adaptive questions generated by AI Agent.");
@@ -693,38 +709,49 @@ export default function App() {
     if (!currentSession) return;
     const currentQuestion = currentSession.questions[currentSession.currentQuestionIndex];
 
-    const response = await fetch("/api/evaluate-answer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    let evaluationResult;
+
+    if (userSettings.useLocalLLM) {
+      evaluationResult = await LocalModelProvider.evaluateAnswer({
         question: currentQuestion,
         answer,
         codeLanguage,
         codeOutput,
         isActuarialPersona: actuarialPersonaEnabled
-      })
-    });
+      });
+    } else {
+      const response = await fetch("/api/evaluate-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: currentQuestion,
+          answer,
+          codeLanguage,
+          codeOutput,
+          isActuarialPersona: actuarialPersonaEnabled
+        })
+      });
 
-    if (!response.ok) {
-      let errMsg = "Failed to submit evaluation review.";
-      try {
-        const errText = await response.text();
+      if (!response.ok) {
+        let errMsg = "Failed to submit evaluation review.";
         try {
-          const errData = JSON.parse(errText);
-          errMsg = errData.error || errMsg;
-        } catch (e) {
-          errMsg = errText || errMsg;
-        }
-      } catch (e) {}
-      throw new Error(errMsg);
-    }
+          const errText = await response.text();
+          try {
+            const errData = JSON.parse(errText);
+            errMsg = errData.error || errMsg;
+          } catch (e) {
+            errMsg = errText || errMsg;
+          }
+        } catch (e) {}
+        throw new Error(errMsg);
+      }
 
-    let evaluationResult;
-    try {
-      const resText = await response.text();
-      evaluationResult = JSON.parse(resText);
-    } catch (e) {
-      throw new Error("Unable to parse evaluation review feedback. Please try again.");
+      try {
+        const resText = await response.text();
+        evaluationResult = JSON.parse(resText);
+      } catch (e) {
+        throw new Error("Unable to parse evaluation review feedback. Please try again.");
+      }
     }
 
     const record: AnswerRecord = {
@@ -762,10 +789,12 @@ export default function App() {
     const boundResume = resumes.find(r => r.id === currentSession.resumeId)?.parsedData;
     const boundJd = jds.find(j => j.id === currentSession.jdId)?.parsedData;
 
-    const response = await fetch("/api/generate-report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    let finalReportCard: ReportCard;
+    let finalStudyPlan: StudyPlan;
+
+    if (userSettings.useLocalLLM) {
+      triggerNotification("Local WebLLM active", "Compiling final evaluation scorecard...", "reminder");
+      const localData = await LocalModelProvider.generateReport({
         resume: boundResume,
         jd: boundJd,
         transcript: currentSession.transcript,
@@ -773,32 +802,48 @@ export default function App() {
         difficulty: currentSession.difficulty,
         company: currentSession.company,
         actuarialFocus: currentSession.actuarialFocus
-      })
-    });
+      });
+      finalReportCard = localData.reportCard;
+      finalStudyPlan = localData.studyPlan;
+    } else {
+      const response = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume: boundResume,
+          jd: boundJd,
+          transcript: currentSession.transcript,
+          mode: currentSession.mode,
+          difficulty: currentSession.difficulty,
+          company: currentSession.company,
+          actuarialFocus: currentSession.actuarialFocus
+        })
+      });
 
-    if (!response.ok) {
-      let errMsg = "Failed to generate performance scorecard.";
-      try {
-        const errText = await response.text();
+      if (!response.ok) {
+        let errMsg = "Failed to generate performance scorecard.";
         try {
-          const errData = JSON.parse(errText);
-          errMsg = errData.error || errMsg;
-        } catch (e) {
-          errMsg = errText || errMsg;
-        }
-      } catch (e) {}
-      throw new Error(errMsg);
-    }
+          const errText = await response.text();
+          try {
+            const errData = JSON.parse(errText);
+            errMsg = errData.error || errMsg;
+          } catch (e) {
+            errMsg = errText || errMsg;
+          }
+        } catch (e) {}
+        throw new Error(errMsg);
+      }
 
-    let data;
-    try {
-      const resText = await response.text();
-      data = JSON.parse(resText);
-    } catch (e) {
-      throw new Error("Unable to parse performance scorecard and study plan. Please try again.");
+      let data;
+      try {
+        const resText = await response.text();
+        data = JSON.parse(resText);
+      } catch (e) {
+        throw new Error("Unable to parse performance scorecard and study plan. Please try again.");
+      }
+      finalReportCard = data.reportCard;
+      finalStudyPlan = data.studyPlan;
     }
-    const finalReportCard: ReportCard = data.reportCard;
-    const finalStudyPlan: StudyPlan = data.studyPlan;
 
     // Attach study plan to report card
     finalReportCard.studyPlan = finalStudyPlan;
@@ -969,15 +1014,16 @@ export default function App() {
     const list = [
       { key: "dashboard", label: "Dashboard" },
       { key: "upload", label: "Document Center" },
-      { key: "roadmap", label: "Career Roadmap" },
       { key: "setup", label: "Start Simulation" },
       { key: "assessment", label: "Aptitude Tests" },
       { key: "questionbank", label: "Question Bank" },
       { key: "mentor", label: "AI Mentor" },
-      { key: "coding", label: "Coding Sandbox" },
-      { key: "tracker", label: "Pipeline Tracker" },
-      { key: "recruit", label: "RecruitAI Platform" }
+      { key: "coding", label: "Coding Sandbox" }
     ];
+    if (userEmail === "adityaagarwal113@gmail.com") {
+      list.push({ key: "recruit", label: "RecruitAI Platform" });
+      list.push({ key: "admin", label: "Admin Console" });
+    }
     if (currentSession) {
       list.push({ key: "interview", label: "Active Interview" });
     }
@@ -1223,6 +1269,44 @@ export default function App() {
             )}
           </div>
         </div>
+      ) : userPortalMode === "admin" ? (
+        /* REDESIGNED FULL-SCREEN UNIFIED ADMIN DASHBOARD */
+        <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 font-sans">
+          <AdminPanel
+            interviews={interviews}
+            setInterviews={setInterviews}
+            enabledFeatures={enabledFeatures}
+            setEnabledFeatures={setEnabledFeatures}
+            questions={questions}
+            setQuestions={setQuestions}
+            aptitudeQuestions={aptitudeQuestions}
+            setAptitudeQuestions={setAptitudeQuestions}
+            codingProblems={codingProblems}
+            setCodingProblems={setCodingProblems}
+            interviewers={interviewers}
+            setInterviewers={setInterviewers}
+            userName={userName}
+            userEmail={userEmail}
+            userRole={userRole}
+            userLevel={userLevel}
+            userXp={userXp}
+            onUpdateCurrentUser={(name, role, level, xp) => {
+              setUserName(name);
+              setUserRole(role);
+              setUserLevel(level);
+              setUserXp(xp);
+              localStorage.setItem("current_user_name", name);
+              localStorage.setItem("current_user_role", role);
+              localStorage.setItem("platform_xp", xp.toString());
+            }}
+            onExitAdmin={() => {
+              setUserPortalMode("candidate");
+              setActiveTab("dashboard");
+              setNavHistory(["dashboard"]);
+              localStorage.setItem("platform_portal_mode", "candidate");
+            }}
+          />
+        </div>
       ) : (
         /* 2. THE MASTER SAAS APP WITH PROFESSIONAL SIDEBAR */
         <div className="flex-1 flex flex-col md:flex-row min-h-screen relative overflow-hidden bg-slate-50">
@@ -1232,7 +1316,7 @@ export default function App() {
             {/* Logo/Brand Header */}
             <div className="flex flex-col h-full overflow-hidden">
               <div className="p-5 border-b border-slate-800/60 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => { if (userPortalMode === "admin") { changePortalMode("candidate"); } else { changeTab("dashboard"); } }}>
+                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => { changeTab("dashboard"); }}>
                   <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white shadow-md shadow-brand-500/20 shrink-0">
                     <Briefcase size={16} />
                   </div>
@@ -1243,118 +1327,47 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Portal Mode Switcher Toggle */}
-              {(userEmail === "adityaagarwal113@gmail.com" || userEmail.toLowerCase() === "admin@example.com") && (
-                <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-900/10 shrink-0">
-                  <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
-                    <button
-                      onClick={() => changePortalMode("candidate")}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                        userPortalMode === "candidate"
-                          ? "bg-brand-500 text-white shadow-md shadow-brand-500/10"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      <User size={12} /> User Portal
-                    </button>
-                    <button
-                      onClick={() => changePortalMode("admin")}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                        userPortalMode === "admin"
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      <Shield size={12} /> Admin
-                    </button>
+              {/* Quick Switch to Admin Console */}
+              <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-950/40 shrink-0">
+                <button
+                  onClick={() => changePortalMode("admin")}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition shadow-sm cursor-pointer"
+                  id="switch-to-admin-btn"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={13} />
+                    <span>Go to Admin Console</span>
                   </div>
-                </div>
-              )}
+                  <ChevronRight size={12} className="opacity-60" />
+                </button>
+              </div>
 
-              {userPortalMode === "candidate" ? (
-                /* Gamified Level Progress */
-                <div className="px-5 py-4 border-b border-slate-800/40 bg-slate-950/40 shrink-0">
-                  <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-wider">
-                    <span>Level {userLevel} Professional</span>
-                    <span className="text-brand-400 font-mono font-bold">{userXp % 500} / 500 XP</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div 
-                      className="bg-brand-500 h-full transition-all duration-500 rounded-full" 
-                      style={{ width: `${((userXp % 500) / 500) * 100}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-2.5 text-[10px] text-slate-400 font-bold">
-                    <span className="flex items-center gap-1">
-                      🔥 {userStreak} Day Streak
-                    </span>
-                    <span className="text-slate-500 hover:text-slate-300 transition cursor-pointer" onClick={() => { setShowProfileModal(true); setProfileModalTab("badges"); }}>
-                      Badges ({userBadges.length})
-                    </span>
-                  </div>
+              {/* Gamified Level Progress */}
+              <div className="px-5 py-4 border-b border-slate-800/40 bg-slate-950/40 shrink-0">
+                <div className="flex justify-between items-center text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                  <span>Level {userLevel} Professional</span>
+                  <span className="text-brand-400 font-mono font-bold">{userXp % 500} / 500 XP</span>
                 </div>
-              ) : (
-                /* Admin System Monitor Status Block */
-                <div className="px-5 py-4 border-b border-slate-800/40 bg-slate-950/40 shrink-0">
-                  <div className="flex justify-between items-center text-indigo-400 text-[10px] font-black uppercase tracking-wider">
-                    <span>Admin System Monitor</span>
-                    <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.2 rounded text-[8px] font-bold">LIVE ONLINE</span>
-                  </div>
-                  <div className="mt-2.5 flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-850">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <div className="text-left text-[10px] text-slate-400 leading-none">
-                      <span className="font-extrabold uppercase tracking-wide block text-[8px] text-slate-500 mb-0.5">Workspace Mode</span>
-                      <strong className="font-semibold text-slate-300">Recruiter Console</strong>
-                    </div>
-                  </div>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div 
+                    className="bg-brand-500 h-full transition-all duration-500 rounded-full" 
+                    style={{ width: `${((userXp % 500) / 500) * 100}%` }}
+                  />
                 </div>
-              )}
+                <div className="flex items-center justify-between mt-2.5 text-[10px] text-slate-400 font-bold">
+                  <span className="flex items-center gap-1">
+                    🔥 {userStreak} Day Streak
+                  </span>
+                  <span className="text-slate-500 hover:text-slate-300 transition cursor-pointer" onClick={() => { setShowProfileModal(true); setProfileModalTab("badges"); }}>
+                    Badges ({userBadges.length})
+                  </span>
+                </div>
+              </div>
 
               {/* Navigation Links Loop inside Sidebar */}
               <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-                {/* Active Sessions */}
-                {(currentSession || selectedReportSession) && (
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-rose-500/80 px-3 block">
-                      Active Sessions
-                    </span>
-                    <div className="space-y-0.5">
-                      {currentSession && (
-                        <button
-                          onClick={() => changeTab("interview")}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                            activeTab === "interview" 
-                              ? "bg-rose-500/10 text-rose-400 border-rose-500/20 font-bold shadow-sm" 
-                              : "text-rose-400/80 hover:bg-rose-500/5 hover:text-rose-400 border-transparent"
-                          }`}
-                        >
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                          </span>
-                          <Radio size={14} className="shrink-0 animate-pulse" />
-                          <span className="truncate">Active Interview</span>
-                        </button>
-                      )}
-                      {selectedReportSession && (
-                        <button
-                          onClick={() => changeTab("report")}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                            activeTab === "report" 
-                              ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 font-bold shadow-sm" 
-                              : "text-indigo-400/80 hover:bg-indigo-500/5 hover:text-indigo-400 border-transparent"
-                          }`}
-                        >
-                          <FileText size={14} className="shrink-0" />
-                          <span className="truncate">Evaluation Report</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Categorized Menu Groups */}
-                {(userPortalMode === "candidate" ? [
+                {[
                   {
                     title: "Learn & Prepare",
                     items: [
@@ -1373,20 +1386,12 @@ export default function App() {
                     ]
                   },
                   {
-                    title: "Career Tracking",
+                    title: "Administration",
                     items: [
-                      { key: "roadmap", label: "Career Roadmap", icon: Compass },
-                      { key: "tracker", label: "Pipeline Tracker", icon: Trello },
+                      { key: "admin", label: "Admin Console", icon: ShieldCheck }
                     ]
                   }
-                ] : [
-                  {
-                    title: "Recruiter Console",
-                    items: [
-                      { key: "recruit", label: "Recruiter Dashboard", icon: Users },
-                    ]
-                  }
-                ]).map(group => {
+                ].map(group => {
                   const filteredItems = group.items.filter(item => enabledFeatures[item.key] !== false);
                   if (filteredItems.length === 0) return null;
                   return (
@@ -1401,7 +1406,13 @@ export default function App() {
                           return (
                             <button
                               key={item.key}
-                              onClick={() => changeTab(item.key)}
+                              onClick={() => {
+                                if (item.key === "admin") {
+                                  changePortalMode("admin");
+                                } else {
+                                  changeTab(item.key);
+                                }
+                              }}
                               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                                 isActive 
                                   ? "bg-brand-500/10 text-brand-400 border-brand-500/20 font-bold shadow-sm" 
@@ -1490,37 +1501,39 @@ export default function App() {
                           <Briefcase size={16} />
                         </div>
                         <div className="text-left">
-                          <h1 className="text-xs font-display font-black text-white tracking-tight leading-none">AICOS</h1>
-                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-1">AI Career OS</span>
+                          <h1 className="text-xs font-display font-black text-white tracking-tight leading-none">ActuaryPrep</h1>
+                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-1">Actuarial Prep Platform</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Portal Mode Switcher Toggle */}
-                    <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-900/10 shrink-0">
-                      <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
-                        <button
-                          onClick={() => { changePortalMode("candidate"); setIsMobileMenuOpen(false); }}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            userPortalMode === "candidate"
-                              ? "bg-brand-500 text-white shadow-md shadow-brand-500/10"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <User size={12} /> User Portal
-                        </button>
-                        <button
-                          onClick={() => { changePortalMode("admin"); setIsMobileMenuOpen(false); }}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                            userPortalMode === "admin"
-                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                              : "text-slate-400 hover:text-slate-200"
-                          }`}
-                        >
-                          <Shield size={12} /> Admin
-                        </button>
+                    {true && (
+                      <div className="px-5 py-3 border-b border-slate-800/40 bg-slate-900/10 shrink-0">
+                        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+                          <button
+                            onClick={() => { changePortalMode("candidate"); setIsMobileMenuOpen(false); }}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              userPortalMode === "candidate"
+                                ? "bg-brand-500 text-white shadow-md shadow-brand-500/10"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            <User size={12} /> User Portal
+                          </button>
+                          <button
+                            onClick={() => { changePortalMode("admin"); setIsMobileMenuOpen(false); }}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              userPortalMode === "admin"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            <Shield size={12} /> Admin
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {userPortalMode === "candidate" ? (
                       /* Gamified Level Progress */
@@ -1620,11 +1633,11 @@ export default function App() {
                             { key: "questionbank", label: "Question Bank", icon: BookOpen },
                           ]
                         },
+
                         {
-                          title: "Career Tracking",
+                          title: "Administration",
                           items: [
-                            { key: "roadmap", label: "Career Roadmap", icon: Compass },
-                            { key: "tracker", label: "Pipeline Tracker", icon: Trello },
+                            { key: "admin", label: "Admin Console", icon: ShieldCheck }
                           ]
                         }
                       ] : [
@@ -1632,6 +1645,12 @@ export default function App() {
                           title: "Recruiter Console",
                           items: [
                             { key: "recruit", label: "Recruiter Dashboard", icon: Users },
+                          ]
+                        },
+                        {
+                          title: "Administration",
+                          items: [
+                            { key: "admin", label: "Admin Console", icon: ShieldCheck }
                           ]
                         }
                       ]).map(group => {
@@ -1734,7 +1753,7 @@ export default function App() {
                   <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white shadow-md shadow-brand-500/15">
                     <Briefcase size={14} />
                   </div>
-                  <h1 className="text-xs font-display font-extrabold text-slate-800 tracking-tight leading-none">AICOS</h1>
+                  <h1 className="text-xs font-display font-extrabold text-slate-800 tracking-tight leading-none">ActuaryPrep</h1>
                 </div>
               </div>
 
@@ -1896,24 +1915,6 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === "roadmap" && (
-                  <CareerRoadmap
-                    resumes={resumes}
-                    userRole={userRole}
-                    careerPrefs={careerPrefs}
-                    onAddXp={saveXp}
-                    onBackToDashboard={() => changeTab("dashboard")}
-                  />
-                )}
-
-                {activeTab === "tracker" && (
-                  <ApplicationTracker
-                    userRole={userRole}
-                    onAddXp={saveXp}
-                    onBackToDashboard={() => changeTab("dashboard")}
-                  />
-                )}
-
                 {activeTab === "recruit" && (
                   <RecruiterDashboard
                     onAddXp={saveXp}
@@ -1941,6 +1942,37 @@ export default function App() {
                     setInterviewers={setInterviewers}
                     enabledFeatures={enabledFeatures}
                     setEnabledFeatures={setEnabledFeatures}
+                  />
+                )}
+
+                {activeTab === "admin" && (
+                  <AdminPanel
+                    interviews={interviews}
+                    setInterviews={setInterviews}
+                    enabledFeatures={enabledFeatures}
+                    setEnabledFeatures={setEnabledFeatures}
+                    questions={questions}
+                    setQuestions={setQuestions}
+                    aptitudeQuestions={aptitudeQuestions}
+                    setAptitudeQuestions={setAptitudeQuestions}
+                    codingProblems={codingProblems}
+                    setCodingProblems={setCodingProblems}
+                    interviewers={interviewers}
+                    setInterviewers={setInterviewers}
+                    userName={userName}
+                    userEmail={userEmail}
+                    userRole={userRole}
+                    userLevel={userLevel}
+                    userXp={userXp}
+                    onUpdateCurrentUser={(name, role, level, xp) => {
+                      setUserName(name);
+                      setUserRole(role);
+                      setUserLevel(level);
+                      setUserXp(xp);
+                      localStorage.setItem("current_user_name", name);
+                      localStorage.setItem("current_user_role", role);
+                      localStorage.setItem("platform_xp", xp.toString());
+                    }}
                   />
                 )}
 

@@ -194,6 +194,7 @@ export interface UserSettings {
   smsNotifications: boolean;
   language: string;
   dailyReminderHour: number;
+  useLocalLLM: boolean;
 }
 
 export interface SavedCompany {

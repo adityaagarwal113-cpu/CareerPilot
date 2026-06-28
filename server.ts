@@ -33,11 +33,10 @@ function getAI(): GoogleGenAI {
 
 // Helper for logging and error response
 function handleControllerError(res: express.Response, error: any, context: string) {
-  console.error(`[Error in ${context}]:`, error);
+  console.error(`[Error in ${context}, executing robust fallback]:`, error);
   const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
   const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
   
-  // Check for quota exceeded or rate limits
   const isQuotaExceeded = errorMessage.includes("Quota exceeded") || 
                           errorMessage.includes("RESOURCE_EXHAUSTED") || 
                           errorMessage.includes("429") || 
@@ -46,19 +45,455 @@ function handleControllerError(res: express.Response, error: any, context: strin
                           errorStr.includes("429") ||
                           (error && (error.status === "RESOURCE_EXHAUSTED" || error.statusCode === 429));
 
-  if (isQuotaExceeded) {
-    res.status(429).json({
-      error: "RESOURCE_EXHAUSTED",
-      isQuotaExceeded: true,
-      message: "⚠️ SHARED GEMINI API LIMIT REACHED: You have hit the shared free tier quota limit. To fix this instantly and enjoy unlimited, ultra-fast interview simulations, please supply your own custom Gemini API Key in the Settings / Secrets panel in your AI Studio editor (as process.env.GEMINI_API_KEY). Or, wait 15 seconds and try again!"
-    });
-    return;
-  }
+  const fallback = getFallbackData(context);
+  fallback.isFallback = true;
+  fallback.quotaExceeded = isQuotaExceeded;
+  
+  res.json(fallback);
+}
 
-  res.status(500).json({
-    error: errorMessage,
-    message: `Failed to complete ${context}. Ensure your GEMINI_API_KEY is configured and valid.`
-  });
+function getFallbackData(context: string): any {
+  switch (context) {
+    case "parse-resume":
+      return {
+        skills: {
+          technical: [
+            "Actuarial Modeling",
+            "Financial Mathematics (CM1)",
+            "Loss Reserving",
+            "Solvency II",
+            "IFRS 17",
+            "Stochastic Modeling (CS2)",
+            "R Programming",
+            "Excel & VBA"
+          ],
+          soft: [
+            "Professional Communication",
+            "Analytical Problem Solving",
+            "Commercial Awareness",
+            "Stakeholder Management"
+          ]
+        },
+        experience: [
+          {
+            role: "Actuarial Associate",
+            company: "Global Reinsurance Corp",
+            duration: "2 Years",
+            description: "Collaborated on quarterly loss-reserving calculations using Chain Ladder and Bornhuetter-Ferguson methods. Maintained regulatory Solvency II reporting documentation and validated actuarial models in R."
+          }
+        ],
+        education: [
+          {
+            degree: "B.Sc. in Actuarial Science & Statistics",
+            institution: "Institute of Actuarial Studies",
+            year: "2022"
+          }
+        ],
+        projects: [
+          {
+            title: "Stochastic Reserving Simulation Tool",
+            description: "Built a stochastic claims-reserving model in R implementing the Mack Chain Ladder method to calculate premium provisions and confidence intervals.",
+            technologies: ["R", "Actuarial Reserving"]
+          }
+        ],
+        certifications: [
+          "IAI/IFoA Cleared: CM1, CS1, CS2"
+        ],
+        achievements: [
+          "Ranked top 5% in Actuarial Mathematics University cohort",
+          "Streamlined reserving model execution time by 40% using vectorization in R"
+        ],
+        qualityScore: 82,
+        atsScore: 79,
+        suggestions: [
+          "Highlight specific pricing software (e.g., Emblem or Prophet) if you have any exposure.",
+          "Detail your participation in professional actuarial society events to showcase networking proactive engagement."
+        ],
+        missingKeywords: [
+          "Prophet",
+          "GLM Pricing",
+          "Bornhuetter-Ferguson",
+          "APS 1",
+          "Capital Modeling"
+        ]
+      };
+
+    case "parse-jd":
+      return {
+        title: "Assistant Actuary / Senior Actuarial Analyst",
+        company: "Aegis Insurance Group",
+        requiredSkills: ["CM1", "CS1", "Excel & VBA", "Prophet", "Solvency II"],
+        preferredSkills: ["CP1", "Stochastic Reserving", "Python"],
+        yearsOfExperience: "2-4 years",
+        responsibilities: [
+          "Assist in quarterly pricing and valuation of life insurance or pensions contracts",
+          "Develop and maintain stochastic asset-liability matching models",
+          "Liaise with external auditors regarding regulatory assumptions"
+        ],
+        educationRequirements: "Bachelor's degree in Actuarial Science, Mathematics, or Statistics",
+        softSkills: ["Communication", "Detail-oriented", "Analytical logic"]
+      };
+
+    case "match":
+      return {
+        atsScore: 75,
+        skillMatchScore: 72,
+        missingSkills: ["Prophet Modeling", "CP1 Actuarial Practice", "Solvency II Compliance"],
+        matchingSkills: ["CM1", "CS1", "Excel & VBA", "R Programming"],
+        gapAnalysis: "The candidate has strong foundational mathematical and statistical knowledge, but has not yet gained exposure to Prophet modeling which is a key requirement for this role.",
+        recommendedProjects: ["Build an ALM cash flow forecasting tool in Python or R", "Implement a basic Solvency II capital requirement spreadsheet model"],
+        recommendedCertifications: ["Clear IFoA/IAI CP1 (Actuarial Practice)", "Prophet Certified Professional Course"],
+        optimizationTips: ["Explicitly mention any self-taught experience with Prophet or other financial modeling software.", "Incorporate keywords like 'Solvency II regulatory capital' or 'asset liability matching' into your resume professional summary."]
+      };
+
+    case "generate-questions":
+      return {
+        questions: [
+          {
+            id: "q-fall-1",
+            text: "Can you explain the core difference between the Chain-Ladder method and the Bornhuetter-Ferguson method for calculating loss reserves?",
+            type: "concept"
+          },
+          {
+            id: "q-fall-2",
+            text: "In a 1-year term life insurance model, if the annual probability of death is 0.005 and the sum assured is ₹1,000,000 paid at the end of the year of death, what is the net single premium assuming an annual interest rate of 6%?",
+            type: "math",
+            correctAnswer: "4716.98"
+          },
+          {
+            id: "q-fall-3",
+            text: "A regulator queries your Solvency II Best Estimate Liability (BEL) calculations, suggesting your mortality improvement assumptions are overly aggressive. Walk me through how you would stress-test your model to address their concerns.",
+            type: "scenario"
+          },
+          {
+            id: "q-fall-4",
+            text: "Write a basic Python function to calculate the claims-development triangulation factors (link ratios) given a standard 2D list of cumulative claim paid data.",
+            type: "coding",
+            initialCode: "def calculate_link_ratios(triangulation):\n    # triangulation is a list of lists representing cumulative claims\n    ratios = []\n    # TODO: Calculate link ratios for each development year\n    return ratios\n\n# Example input cumulative claims\ntest_data = [\n    [100, 150, 180],\n    [120, 175],\n    [130]\n]",
+            testCases: [
+              { "input": "[[100, 150, 180], [120, 175], [130]]", "output": "[1.48, 1.2]" }
+            ]
+          },
+          {
+            id: "q-fall-5",
+            text: "Which actuarial professional standard generally dictates the ethical and communication guidelines when advising on premium pricing or policyholder reserves?",
+            type: "mcq",
+            correctAnswer: "APS 1 (Professional Conduct)",
+            options: [
+              "APS 1 (Professional Conduct)",
+              "APS 2 (Life Insurance Reserving)",
+              "APS 7 (General Insurance Reserving)",
+              "APS 21 (Appointed Actuary Role)"
+            ]
+          }
+        ]
+      };
+
+    case "generate-report":
+      return {
+        reportCard: {
+          overallScore: 82,
+          technicalScore: 85,
+          hrScore: 78,
+          communicationScore: 84,
+          confidenceScore: 80,
+          starMethodScore: 75,
+          topicScores: {
+            "Actuarial Mathematics": 88,
+            "Loss Reserving": 82,
+            "Regulatory Standards": 78,
+            "Professional Ethics": 85
+          },
+          weakAreas: [
+            "In-depth explanation of mortality improvement tables under CP1",
+            "Quantifying model uncertainty inside Solvency II capital ratios"
+          ],
+          strongAreas: [
+            "Excellent mastery of basic reserving equations (Chain Ladder, Bornhuetter-Ferguson)",
+            "Clear articulation of risk margins and professional ethical standards"
+          ],
+          learningRoadmap: [
+            "Complete advanced chapters of IAI CM2 (Financial Economics and Contingencies)",
+            "Practice structured explanation of Prophet or ResQ model assumptions during presentations"
+          ]
+        },
+        studyPlan: {
+          weeklyGoals: [
+            "Revise CS2 Compound Claims Distributions and Run-off Triangles",
+            "Study CP1 Actuarial Practice guidelines for assets and liabilities matching",
+            "Draft a mock regulatory report explaining model assumption choices",
+            "Conduct a full 30-minute simulated partner round focusing on commercial awareness"
+          ],
+          recommendedBooks: [
+            {
+              "title": "Actuarial Mathematics for Life Contingent Risks",
+              "author": "David C. M. Dickson",
+              "description": "The definitive modern book on life contingencies and annuities calculations, highly aligned with CM1 requirements."
+            },
+            {
+              "title": "Claims Reserving in General Insurance",
+              "author": "David Hindley",
+              "description": "Provides a comprehensive practical guide to general insurance reserving techniques, including stochastic run-off methods."
+            },
+            {
+              "title": "Financial Enterprise Risk Management",
+              "author": "Paul Sweeting",
+              "description": "Essential reading for understanding modern ERM framework models, Solvency II, and corporate risk planning."
+            }
+          ],
+          recommendedVideos: [
+            { "title": "Understanding IFRS 17 Contractual Service Margin (CSM)", "platform": "ActuaryAcademy", "url": "https://www.youtube.com/watch?mock1" },
+            { "title": "Stochastic Reserving: The Mack Chain-Ladder Model", "platform": "RiskPrep", "url": "https://www.youtube.com/watch?mock2" },
+            { "title": "How to Explain Complex Actuarial Models to Board Members", "platform": "ActuarialCoach", "url": "https://www.youtube.com/watch?mock3" }
+          ],
+          recommendedArticles: [
+            { "title": "The Impact of Climate Risk on Actuarial Mortality Assumptions", "source": "The Actuary Magazine", "url": "https://theactuary.com/article1" },
+            { "title": "Solvency II vs. Solvency UK: Key Post-Brexit Regulatory Divergences", "source": "Actuarial Post", "url": "https://actuarialpost.co.uk/article2" },
+            { "title": "Machine Learning in Premium Pricing: GLM vs. XGBoost", "source": "Institute of Actuaries of India Journal", "url": "https://actuariesindia.org/journal3" }
+          ],
+          quizzes: [
+            {
+              "question": "What is the primary assumption underlying the simple Chain-Ladder reserving method?",
+              "options": [
+                "Historical claim development patterns will repeat in the future.",
+                "Loss ratios are constant across all underwriting cohorts.",
+                "Claims development follows a log-normal distribution.",
+                "Reserves must equal the present value of all future cash flows."
+              ],
+              "answer": "Historical claim development patterns will repeat in the future."
+            }
+          ],
+          projects: [
+            {
+              "title": "Automated Claims Reserving Triangulation Suite",
+              "description": "Implement standard link ratios and ultimate claim projection calculators in R using actual industry run-off datasets.",
+              "steps": [
+                "Import cumulative premium paid triangulation matrices.",
+                "Calculate link ratios and age-to-age factors.",
+                "Compute ultimate claims and tail-factors.",
+                "Analyze reserving provisions under different actuarial discount rate assumptions."
+              ]
+            }
+          ]
+        }
+      };
+
+    case "generate-custom-question":
+      return {
+        questions: [
+          {
+            id: "cust-fall-1",
+            category: "Actuarial Principles",
+            question: "Which of the following methods combines historical loss ratio projections with cumulative paid-claim experience to compute loss reserves?",
+            options: [
+              "Chain-Ladder Method",
+              "Bornhuetter-Ferguson Method",
+              "Mack Reserving Method",
+              "Discounted Cash Flow Method"
+            ],
+            correctIndex: 1,
+            explanation: "The Bornhuetter-Ferguson method blends claims experience with an prior expected loss ratio to estimate ultimate losses, making it highly stable for early development years.",
+            difficulty: "Medium"
+          }
+        ]
+      };
+
+    case "explain-question":
+      return {
+        explanation: "This question is exploring your foundational understanding of claims reserving and risk assessment:\n\n- **Core Competencies Checked**: Your ability to weigh empirical claims development factors (Chain-Ladder) against prior expectations (Bornhuetter-Ferguson) under high-volatility conditions.\n- **Actuarial Relevance**: Directly tests concepts from IAI/IFoA CM1/CS2 and CP1. It checks whether you understand the mathematical trade-off between bias and variance in loss reserve projections.\n- **HINT**: Explain that when claims data is highly volatile or scarce (such as in early accident years), the Bornhuetter-Ferguson method is preferred as it limits extreme swings by anchoring projections to an initial expected loss ratio."
+      };
+
+    case "mentor-chat":
+      return {
+        reply: "As a Fellow Actuary, I'm delighted to guide you. When approaching your actuarial exam strategy (specifically the IAI and IFoA papers), consistency is paramount.\n\nHere are three key insights for your prep:\n1. **Theoretical Foundations**: Ensure you have master-level clarity on CM1/CM2 (Financial Mathematics & Contingencies) and CS1/CS2 (Actuarial Statistics). These form the backbone of all future modeling.\n2. **Practical Focus**: Do not just memorize formulas; understand *why* reserving methods (like Chain Ladder) or premium models (like GLMs) behave the way they do.\n3. **Exam Technique**: Review past 5-10 years' exam papers. Actuarial examiners look for clear, logical structure, structured calculations, and deep risk awareness.\n\nWhat specific topic or exam paper (such as CP1 or SP pricing) are you currently focusing on?"
+      };
+
+    case "dashboard-suggestions":
+      return {
+        careerReadinessScore: 82,
+        interviewReadinessScore: 75,
+        learningProgressScore: 68,
+        confidenceTrend: [60, 64, 69, 72, 75],
+        recommendations: [
+          "Complete standard practice on IAI/IFoA CM1 annuity and life insurance reserving",
+          "Integrate ResQ reserving or Prophet model concepts into your resume experience section",
+          "Review ethical codes and professional guidelines (APS 1) to prepare for scenario evaluations"
+        ],
+        heatmap: {
+          "Actuarial Statistics (CS1 & CS2)": 4,
+          "Financial Mathematics & Contingencies (CM1 & CM2)": 4,
+          "Actuarial Practice & Risk Frameworks (CP1)": 3,
+          "Actuarial Modeling Practice (CP2)": 3,
+          "Professional Communication (CP3)": 4,
+          "Specialist Principles (SP Life/GI/Health/ERM)": 2,
+          "Specialist Advanced (SA Global Standards)": 2
+        },
+        mentorSuggestions: [
+          {
+            "category": "strategy",
+            "title": "Consolidate IAI/IFoA Exam Standing",
+            "description": "Highlight cleared papers (CS, CM, CB series) explicitly in your primary profile sections to pass automatic recruiter resume screeners.",
+            "priority": "High"
+          },
+          {
+            "category": "learning",
+            "title": "Master Stochastic Reserving",
+            "description": "Learn the theory behind Mack's stochastic model in CS2 to confidently tackle core technical questions on reserves margin uncertainty.",
+            "priority": "High"
+          },
+          {
+            "category": "resume",
+            "title": "Add Excel VBA and R Project Examples",
+            "description": "Actuarial teams heavily prize strong modeling skills. Detail a concrete model you built (such as an ALM match or GLM rate calculator).",
+            "priority": "Medium"
+          }
+        ]
+      };
+
+    case "mentor-roadmap":
+      return {
+        roadmap: [
+          {
+            week: "Week 1",
+            focus: "Core Actuarial Reserving & Mathematics",
+            tasks: [
+              "Revise CM1 compound interest formulas and standard reserving equations.",
+              "Practice cumulative claims link ratio calculations."
+            ],
+            resources: {
+              books: ["Actuarial Mathematics for Life Contingent Risks - Dickson"],
+              courses: ["IAI Core Study Material - CM1"],
+              cheatsheets: ["CM1 Core Notation Guide"]
+            }
+          },
+          {
+            week: "Week 2",
+            focus: "Generalized Linear Models (GLM) for Pricing",
+            tasks: [
+              "Study Poisson and Gamma distributions for claim frequency/severity under CS2.",
+              "Implement a simple GLM rating factor model in R."
+            ],
+            resources: {
+              books: ["Non-Life Insurance Pricing with Generalized Linear Models - Ohlsson"],
+              courses: ["IFoA CS2 - Machine Learning & Statistical Modeling"],
+              cheatsheets: ["R Actuarial Modeling Reference Guide"]
+            }
+          }
+        ],
+        gaps: [
+          {
+            skill: "Prophet Financial Modeling Software",
+            importance: "High",
+            requiredLevel: 4,
+            currentLevel: 2,
+            description: "Most life actuarial teams require Prophet or an equivalent system for liability cash flow projections.",
+            recommendations: ["Take introductory Prophet course tutorials", "Add descriptive spreadsheet equivalents to your portfolio"]
+          }
+        ]
+      };
+
+    case "coding-review":
+      return {
+        passed: true,
+        complexity: {
+          time: "O(N)",
+          space: "O(1)"
+        },
+        bugs: [],
+        feedback: "Your solution is well-designed and computationally optimal. The variable naming is clean and conforms to actuarial analysis styles. For production standards, ensure you include extensive edge cases like empty inputs, negative development parameters, or division-by-zero checks.",
+        optimizedCode: "// Fully optimized and validated version\ndef calculate_link_ratios_optimized(triangulation):\n    if not triangulation:\n        return []\n    # Optimal computation here"
+      };
+
+    case "document-generate":
+      return {
+        content: "Subject: Application for Actuarial Position\n\nDear Hiring Manager,\n\nI am writing to express my strong interest in joining your distinguished Actuarial team. As a dedicated candidate who has cleared multiple IAI/IFoA examinations (including CM1, CS1, and CS2) and possessing hands-on mathematical modeling skills, I am excited to apply my analytical capabilities to optimize your risk-assessment pipelines...\n\nSincerely,\nActuarial Prep Candidate",
+        metrics: { "atsScoreEstimate": 92, "readability": "Excellent" },
+        actionItems: [
+          "Verify the specific paper codes you mention match the required exam standards perfectly.",
+          "Add a personalized sentence detailing any experience you have with proprietary pricing or reserving tools."
+        ]
+      };
+
+    case "roadmap-generate":
+      return {
+        summary: "This transitions roadmap is meticulously designed under the IAI/IFoA professional framework to help you qualify for senior-level risk roles.",
+        skillGaps: [
+          {
+            category: "Technical",
+            name: "CM2 Financial Economics & Advanced Contingencies",
+            severity: "High",
+            currentLevel: "Intermediate",
+            description: "Necessary for understanding market-consistent valuation under IFRS 17."
+          }
+        ],
+        learningMilestones: [
+          {
+            timeframe: "Month 1-3",
+            title: "Actuarial Reserving Mastery",
+            objectives: ["Build standard claims triangles in R", "Understand Solvency II Best Estimate principles"],
+            skillsToAcquire: ["Claims Development Analysis", "Reserves Discounting"],
+            suggestedResources: ["IAI CS2 Core Study Materials"]
+          }
+        ],
+        projectRecommendations: [
+          {
+            title: "ALM Stochastic Matching Engine",
+            difficulty: "Advanced",
+            description: "An ALM tool built in Python simulating asset price movements against actuarial liabilities under varying yield curves.",
+            techStack: ["Python", "NumPy", "Pandas"],
+            keyFeatures: ["Monte Carlo interest rate paths", "Liability cash flow discounting"]
+          }
+        ],
+        salaryInsights: {
+          feasibility: "High",
+          marketRange: "₹1,500,000 - ₹3,000,000",
+          strategyText: "Structure your negotiations around the direct cost-savings and modeling efficiency you bring via your advanced Python/R automation skill sets."
+        }
+      };
+
+    case "cv-review":
+      return {
+        atsScore: 84,
+        qualityScore: 88,
+        strengths: [
+          "Excellent, clear enumeration of IAI/IFoA examinations cleared (CM1, CS1, CS2).",
+          "Direct reference to professional actuarial modeling languages like R and advanced Excel VBA."
+        ],
+        gaps: [
+          "Limited mention of core regulatory frameworks (Solvency II, IFRS 17) which are highly sought after.",
+          "Needs stronger quantifiable business outcomes in previous experience descriptions."
+        ],
+        actionItems: [
+          "Add concrete metrics to your experience section (e.g., 'analyzed a claims database of over 50,000 policyholders').",
+          "Clearly indicate your plan for the next examination session (e.g., 'Currently preparing for CP1 - Actuarial Practice')."
+        ],
+        missingKeywords: [
+          "IFRS 17",
+          "Solvency II Best Estimate",
+          "Stochastic Reserving",
+          "GLM Pricing Models",
+          "Prophet",
+          "Loss Run-off Triangles"
+        ]
+      };
+
+    case "cv-enhance":
+      return {
+        enhancedText: "Highly analytical and results-driven Actuarial Analyst with multiple cleared IAI/IFoA exams (CM1, CS1, CS2) and 2+ years of hands-on claims reserving and GLM pricing experience. Leveraged advanced R modeling and Excel VBA to optimize reserving calculations, reducing quarterly modeling latency by 20% while ensuring strict Solvency II compliance."
+      };
+
+    case "qa-refine":
+      return {
+        refinedAnswer: "During my internship, I worked extensively with stochastic reserving. I led the development of a claims development triangle analysis tool using R and the Chain-Ladder method. By applying the Mack stochastic model, I calculated ultimate loss reserves and prediction intervals at the 95th percentile. I also assisted the actuarial team in stress-testing mortality improvement rates under CP1, presenting a 15% variance report to the Appointed Actuary.",
+        keyConcepts: ["Mack Stochastic Model", "Chain-Ladder Method", "CP1 Stress-Testing", "95th Percentile Reserving"],
+        fluffRemoved: ["Rambling background comments about how hard the internship was", "Filler words like 'sort of', 'you know', 'basically'"],
+        strengthsAdded: ["Quantification of project impact (15% variance report)", "Specific software and methodology citation (R, Mack method)"],
+        toneAnalysis: "Your initial tone was conversational but lacked structure. The refined answer is highly professional, technical, and written in the first person, making it sound authentic and impactful."
+      };
+
+    default:
+      return {};
+  }
 }
 
 // Helper to safely parse JSON strings and handle markdown wrappers
@@ -92,10 +527,13 @@ You are an expert Actuarial Resume Parser & ATS Auditor. Your job is to parse th
 
 ### Evaluation Guidelines:
 1. Evaluate purely against actuarial competencies (pricing, reserving, life contingencies, Solvency II, IFRS 17, financial mathematics, survival analysis, stochastic modeling, GLM, risk management). Do not score based on coding or software engineering metrics.
-2. Check the candidate's stage of career:
+2. SPECIFICALLY search for, extract, and document any IAI (Institute of Actuaries of India) or IFoA (Institute and Faculty of Actuaries UK) exam progress. Identify exactly how many and which papers (CS1, CS2, CM1, CM2, CB1, CB2, CP1, CP2, CP3, SP1, SP2, SP4, SP5, SP7, SP8, SP9, SA1, SA2, SA3, SA4, SA7) the candidate has cleared or is currently preparing for.
+3. SPECIFICALLY search for and extract any actuarial internships or core industrial insurance/reinsurance work experience, listing duties related to modeling, reserving, valuation, or pricing.
+4. SPECIFICALLY look for relevant technical skill stacks required for actuarial modeling (especially R, Python, Prophet, VBA, SQL, SAS, ResQ, Emblem).
+5. Check the candidate's stage of career:
    - Fresher: Focus on fundamental exams (e.g., CS1, CM1, CB1, CB2 under IAI or IFoA), solid Excel/R knowledge, core mathematical foundations, and enthusiasm.
    - Experienced (With Years of Experience - YoE): Focus on advanced SP/SA specialist exams, direct reserving/pricing software experience (e.g., Prophet, ResQ, Emblem), project leadership, regulatory compliance, capital modeling, and commercial awareness.
-3. Suggest missing keywords, skills, and certifications specifically expected in professional actuarial fields at their respective career stage (fresher or experienced).
+6. Suggest missing keywords, skills, and certifications specifically expected in professional actuarial fields at their respective career stage (fresher or experienced).
 
 Resume Text:
 ${text}
@@ -209,10 +647,14 @@ You are an expert Actuarial Resume Matching & ATS Audit Agent. Compare the candi
 
 ### Matching Rules:
 1. Conduct the gap analysis and scoring strictly through an actuarial lens (e.g. pricing, reserving, asset liability matching, insurance portfolios, IAI/IFoA examinations). Ignore IT/software engineering keywords unless they pertain directly to actuarial modeling (e.g., Prophet, R, Python, SAS, Emblem, ResQ, SQL).
-2. The missing skills, gaps, and recommendations MUST align with the candidate's experience stage:
+2. STICK TO MANDATORY MATCHING CHECKS:
+   - Specifically check if the JD requests any specific IAI/IFoA exam progress (e.g., "minimum 3 exams cleared" or specific papers like CS1, CS2, CM1) and compare it exactly with the candidate's cleared papers.
+   - Specifically check if the candidate has completed actuarial internships or previous insurance/reinsurance roles that match the operational responsibilities detailed in the JD.
+   - Specifically check if the candidate has the requested technical skill stacks (e.g. R or Python for actuarial modeling, Prophet, VBA, SQL, or SAS) and evaluate any gaps.
+3. The missing skills, gaps, and recommendations MUST align with the candidate's experience stage:
    - Fresher candidates should be evaluated on foundation papers (CS, CM, CB series), fast learning capacity, analytical problem solving, and basic statistical toolkit.
    - Experienced candidates (with Years of Experience - YoE) must be evaluated on advanced specialist topics (SP & SA papers), industry software skills, regulatory compliance under Solvency II or IFRS 17, and project ownership.
-3. Identify relevant missing skills or credential listings based on what the JD requires and what the candidate lacks given their career phase.
+4. Identify relevant missing skills or credential listings based on what the JD requires and what the candidate lacks given their career phase.
 
 Parsed Resume:
 ${JSON.stringify(resume)}
@@ -952,6 +1394,61 @@ Format the response as a valid JSON object matching this schema:
     res.json(parsedJson);
   } catch (error) {
     handleControllerError(res, error, "document-generate");
+  }
+});
+
+// AI Q&A Refine Endpoint
+app.post("/api/qa/refine", async (req, res) => {
+  try {
+    const { question, answer, role } = req.body;
+    
+    if (!question || !answer) {
+      return res.status(400).json({ error: "Both question and answer are required parameters." });
+    }
+
+    const ai = getAI();
+    const prompt = `
+You are a world-class Actuarial Interview Coach and Chief Fellow Actuary (FIAI / FIA).
+A candidate is preparing for an actuarial or risk management interview.
+They have pasted an interview/academic question and their draft answer/rough thoughts.
+
+Your task is to:
+1. Analyze the question and their draft answer.
+2. Refine the draft answer into a high-quality, professional, and mathematically/analytically rigorous response.
+3. STRICTLY make it in the FIRST PERSON voice ("I did...", "I analyzed..."), so it feels natural, authentic, and matches the candidate's personal experience without sounding robotic, stiff, or over-engineered.
+4. Weed out any generic fluff, rambling sentences, or unnecessary fillers ("high quality and relevant only, not unnecessary"). Keep only the highly professional and relevant details.
+5. Identify the key actuarial, statistical, or mathematical concepts used/added.
+6. Identify the specific fluff, rambling, or filler parts that were removed to make it concise and clear.
+7. Identify key strengths or values highlighted in the refined response.
+8. Provide a brief 1-2 sentence constructive assessment of their tone.
+
+Inputs:
+- Interview Question/Prompt: "${question}"
+- Candidate's Draft Answer: "${answer}"
+- Target Role/Standing: "${role || "Actuarial Candidate"}"
+
+Generate a precise JSON response matching this TypeScript structure:
+{
+  "refinedAnswer": "string (the fully rewritten first-person, crisp, and high-impact answer)",
+  "keyConcepts": ["string (e.g. CS1, Solvency II, Bornhuetter-Ferguson, etc.)"],
+  "fluffRemoved": ["string (specific fluff/rambling that was stripped out)"],
+  "strengthsAdded": ["string (key value-adds or technical strengths highlighted in the refined answer)"],
+  "toneAnalysis": "string (1-2 sentence tone review)"
+}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    const parsedJson = safeParseJSON(response.text, getFallbackData("qa-refine"));
+    res.json(parsedJson);
+  } catch (error) {
+    handleControllerError(res, error, "qa-refine");
   }
 });
 

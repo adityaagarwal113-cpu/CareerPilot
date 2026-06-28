@@ -83,6 +83,24 @@ export default function AIMentorHub({
   onAddXp 
 }: AIMentorHubProps) {
   const [activeSegment, setActiveSegment] = useState<"coach" | "roadmap" | "learning" | "analytics">("coach");
+  const [adminCourses, setAdminCourses] = useState<any[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("platform_courses");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setAdminCourses(parsed.filter((c: any) => c.status === "Published" || c.status === "Active" || !c.status));
+      } catch (e) {
+        console.error("Error reading platform courses", e);
+      }
+    } else {
+      setAdminCourses([
+        { id: "crs-1", title: "Mastering Claims Reserving (Chain-Ladder Method)", category: "Actuarial", duration: "12 Hours", enrolled: 145, difficulty: "Medium" },
+        { id: "crs-2", title: "Solvency II Standard Formula Deep-Dive", category: "Actuarial", duration: "8 Hours", enrolled: 98, difficulty: "Hard" }
+      ]);
+    }
+  }, []);
   
   // Dynamic Chat states
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -732,7 +750,8 @@ export default function AIMentorHub({
 
       {/* MODULE 8: LEARNING HUB & FLASHCARDS & REVISION BOARD */}
       {activeSegment === "learning" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" id="learning-hub-board">
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" id="learning-hub-board">
           
           {/* FLASHCARD STACK COLUMN */}
           <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between space-y-4 text-left" id="spaced-repetition-flashcards">
@@ -964,6 +983,60 @@ export default function AIMentorHub({
           </div>
 
         </div>
+
+        {/* Prescribed Course Syllabus Board */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 text-left space-y-4 shadow-sm w-full mt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-display font-black text-slate-800 text-sm flex items-center gap-1.5">
+                <Layers className="text-emerald-600" size={15} /> Curated Syllabus & Course Curriculum
+              </h3>
+              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                Curated and verified training blueprints to prepare you for professional board qualifications.
+              </p>
+            </div>
+            <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded uppercase font-mono">
+              Examiner Endorsed
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {adminCourses.map(course => (
+              <div key={course.id} className="p-4 bg-slate-50/50 border border-slate-200/60 rounded-2xl flex flex-col justify-between hover:bg-slate-50 transition hover:shadow-sm">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[8px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      {course.category || "General"}
+                    </span>
+                    <span className={`text-[8px] font-extrabold uppercase px-2 py-0.5 rounded ${
+                      course.difficulty === "Hard" ? "bg-rose-50 text-rose-700 border border-rose-100" :
+                      course.difficulty === "Medium" ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                      "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                    }`}>
+                      {course.difficulty || "Medium"}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-black text-slate-800 leading-snug line-clamp-2 min-h-[32px]">{course.title}</h4>
+                </div>
+
+                <div className="pt-3 border-t border-slate-150 mt-3 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                  <span className="flex items-center gap-1 text-slate-400">
+                    ⏱ {course.duration || "Self-Paced"}
+                  </span>
+                  <span className="text-indigo-600 font-bold">
+                    👥 {course.enrolled || 12} Enrolled
+                  </span>
+                </div>
+              </div>
+            ))}
+            {adminCourses.length === 0 && (
+              <div className="col-span-full py-12 text-center text-slate-400 italic text-xs">
+                No courses published by administrators yet. Check back soon!
+              </div>
+            )}
+          </div>
+        </div>
+        </>
       )}
 
       {/* MODULE PERFORMANCE MASTERY ANALYTICS */}

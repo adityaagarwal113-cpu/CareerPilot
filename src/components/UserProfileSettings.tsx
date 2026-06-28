@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   User, Shield, Compass, Settings, Check, RefreshCw, LogOut, Trash2, 
   MapPin, DollarSign, Briefcase, Building, Bell, Volume2, Globe, Sparkles,
@@ -167,6 +167,40 @@ export default function UserProfileSettings({
 
   const handleDeleteSavedRole = (id: string) => {
     setSavedJobRoles(prev => prev.filter(r => r.id !== id));
+  };
+
+  const [activePlatformJobs, setActivePlatformJobs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("platform_jobs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setActivePlatformJobs(parsed.filter((j: any) => j.status === "Active" || !j.status));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      setActivePlatformJobs([
+        { id: "job-1", title: "Senior Valuation Actuary", company: "Swiss Re", location: "Bangalore", salary: "₹2,400,000 - ₹3,600,000", applications: 18 },
+        { id: "job-2", title: "P&C Pricing Analyst", company: "Milliman", location: "Mumbai / Remote", salary: "₹1,500,000 - ₹2,100,000", applications: 34 }
+      ]);
+    }
+  }, []);
+
+  const handleSavePlatformJob = (job: any) => {
+    if (savedJobRoles.some(r => r.title === job.title && r.company === job.company)) {
+      alert("This job is already in your Saved Job Openings.");
+      return;
+    }
+    const newSaved = {
+      id: "saved-" + Date.now(),
+      title: job.title,
+      company: job.company,
+      expectedSalary: job.salary || "Not Specified"
+    };
+    setSavedJobRoles(prev => [...prev, newSaved]);
+    alert(`Successfully added ${job.title} at ${job.company} to your Saved Job Openings!`);
   };
 
   return (
@@ -485,6 +519,52 @@ export default function UserProfileSettings({
           <div className="space-y-4 text-xs text-left" id="saved-entities-settings">
             <h4 className="font-display font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">Saved Job Opportunities & Companies</h4>
             
+            {/* Active Employer Job Board Section */}
+            <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 border-b border-slate-200/60 pb-2">
+                <div>
+                  <h5 className="font-bold text-slate-800 flex items-center gap-1">
+                    <Sparkles size={13} className="text-indigo-600 animate-pulse" /> Active Employer Job Board
+                  </h5>
+                  <p className="text-[10px] text-slate-400 font-semibold">Job vacancies actively published and curated by our CareerForge Administrators.</p>
+                </div>
+                <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-150 px-2 py-0.5 rounded uppercase font-mono">
+                  Verified Openings
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {activePlatformJobs.map(job => (
+                  <div key={job.id} className="p-3 bg-white border border-slate-200/60 rounded-xl flex flex-col justify-between hover:border-indigo-200/80 transition-all">
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-start gap-1">
+                        <strong className="text-slate-800 font-extrabold text-[11px] leading-tight line-clamp-1">{job.title}</strong>
+                        <span className="text-[8px] bg-indigo-50 text-indigo-700 border border-indigo-150 px-1.5 py-0.2 rounded font-black shrink-0">
+                          {job.location || "Remote"}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold">{job.company}</p>
+                      <p className="text-[9px] text-indigo-600 font-semibold">{job.salary || "Competitive Packages"}</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-150 mt-2 flex justify-end">
+                      <button
+                        onClick={() => handleSavePlatformJob(job)}
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black rounded-lg cursor-pointer transition uppercase"
+                      >
+                        Save Opening
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {activePlatformJobs.length === 0 && (
+                  <div className="col-span-full py-8 text-center text-slate-400 italic text-[10px]">
+                    No active job board openings listed by administrators yet. Check back soon!
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Saved Companies */}
@@ -569,6 +649,22 @@ export default function UserProfileSettings({
                     checked={userSettings.soundEnabled}
                     onChange={(e) => setUserSettings(prev => ({ ...prev, soundEnabled: e.target.checked }))}
                     className="rounded border-slate-300 text-brand-500 h-4 w-4"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-emerald-800 flex items-center gap-1">
+                      <Sparkles size={12} className="text-emerald-500 animate-pulse" />
+                      Browser Local LLM (WebLLM)
+                    </span>
+                    <p className="text-[10px] text-emerald-600/90 leading-tight">Bypass Gemini rate limits using standard browser-based on-device LLM</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={userSettings.useLocalLLM || false}
+                    onChange={(e) => setUserSettings(prev => ({ ...prev, useLocalLLM: e.target.checked }))}
+                    className="rounded border-emerald-300 text-emerald-600 h-4 w-4 focus:ring-emerald-500"
                   />
                 </div>
 

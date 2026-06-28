@@ -176,22 +176,51 @@ export default function InterviewSessionComponent({
   const [isPaused, setIsPaused] = useState(true);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  // Tab/Window Visibility & Focus management
+  // Tab/Window Visibility & Focus management & Timer
+  const [sessionElapsed, setSessionElapsed] = useState(0);
+  const [showResumeOverlay, setShowResumeOverlay] = useState(false);
+  const [hadActiveRecording, setHadActiveRecording] = useState(false);
+  const [hadActiveSpeaking, setHadActiveSpeaking] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setSessionElapsed(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const triggerFocusLoss = () => {
+    if (showResumeOverlay) return; // already showing
+    
+    // Check if recording
+    if (isRecordingRef.current) {
+      setHadActiveRecording(true);
+      stopVoiceRecording();
+    }
+    
+    // Check if speaking
+    if (isSpeakingRef.current) {
+      setHadActiveSpeaking(true);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+    }
+
+    setIsPaused(true);
+    setShowResumeOverlay(true);
+  };
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        setIsPaused(true);
-        if (typeof window !== "undefined" && window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-        }
+        triggerFocusLoss();
       }
     };
 
     const handleWindowBlur = () => {
-      setIsPaused(true);
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      triggerFocusLoss();
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -201,7 +230,22 @@ export default function InterviewSessionComponent({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, []);
+  }, [showResumeOverlay]);
+
+  const handleResumeFromOverlay = () => {
+    setShowResumeOverlay(false);
+    setIsPaused(false);
+    
+    if (hadActiveSpeaking) {
+      handleReadAloud(activeSpokenTextRef.current, true);
+      setHadActiveSpeaking(false);
+    }
+    
+    if (hadActiveRecording) {
+      startVoiceRecording();
+      setHadActiveRecording(false);
+    }
+  };
 
   const currentQuestion: InterviewQuestion | undefined = session.questions[session.currentQuestionIndex];
   const totalQuestions = session.questions.length;
@@ -232,6 +276,18 @@ export default function InterviewSessionComponent({
   const [explanationText, setExplanationText] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+
+  const isRecordingRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const activeSpokenTextRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
 
   // Meet controls
   const [cameraActive, setCameraActive] = useState(false);
@@ -702,9 +758,10 @@ export default function InterviewSessionComponent({
     }
   };
 
-  const handleReadAloud = (textToSpeak?: string) => {
-    if (isPaused) return;
+  const handleReadAloud = (textToSpeak?: string, forceSpeak?: boolean) => {
+    if (isPaused && !forceSpeak) return;
     const speakText = textToSpeak || currentQuestion?.text;
+    activeSpokenTextRef.current = speakText;
     if (!speakText) return;
 
     if (isSpeaking) {
@@ -899,28 +956,41 @@ export default function InterviewSessionComponent({
               {onDeleteSession && (
                 <button
                   onClick={() => {
-                    if (!isConfirmingDelete) {
-                      setIsConfirmingDelete(true);
-                      setTimeout(() => setIsConfirmingDelete(false), 4000);
-                    } else {
+                    if (window.confirm("Are you sure you want to discard this mock interview session? All recorded transcript answers and temporary scores will be lost permanently.")) {
                       onDeleteSession();
-                      setIsConfirmingDelete(false);
                     }
                   }}
-                  className={`px-5 py-2.5 font-bold rounded-xl text-xs border transition cursor-pointer flex items-center gap-1.5 ${
-                    isConfirmingDelete 
-                      ? "bg-rose-600 hover:bg-rose-700 text-white border-rose-600 animate-pulse" 
-                      : "bg-slate-850 hover:bg-slate-800 hover:text-rose-400 text-slate-300 border-slate-700"
-                  }`}
+                  className="px-5 py-2.5 font-bold rounded-xl text-xs border transition cursor-pointer flex items-center gap-1.5 bg-slate-850 hover:bg-slate-800 hover:text-rose-400 text-slate-300 border-slate-700"
                 >
                   <Trash2 size={12} />
-                  {isConfirmingDelete ? "Click Again to Confirm Discard" : "Discard & Delete Session"}
+                  Discard & Delete Session
                 </button>
               )}
             </div>
           </div>
         );
       })()}
+
+      {/* Focus Lost Fullscreen Resume Overlay */}
+      {showResumeOverlay && (
+        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg rounded-2xl z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in border border-indigo-900/40">
+          <div className="w-16 h-16 bg-rose-500/15 border border-rose-500/30 rounded-full flex items-center justify-center text-rose-400 mb-4 shadow-lg shadow-rose-500/10">
+            <Pause size={28} className="animate-pulse" />
+          </div>
+          <h3 className="text-base font-display font-black text-white mb-2 flex items-center gap-2">
+            ⚠️ Assessment Paused: Tab Focus Lost
+          </h3>
+          <p className="text-xs text-slate-300 max-w-md leading-relaxed mb-6">
+            Under strict assessment integrity guidelines, your simulated mock session is automatically paused when you leave the window. Click below to re-engage the active recording and restore the coach's audio speech.
+          </p>
+          <button
+            onClick={handleResumeFromOverlay}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer flex items-center gap-2"
+          >
+            <Play size={12} fill="currentColor" /> Resume Recording & Coach Audio
+          </button>
+        </div>
+      )}
 
       <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch ${isPaused ? "pointer-events-none opacity-40 select-none" : ""}`} id="immersive-interview-workspace">
       
@@ -933,7 +1003,12 @@ export default function InterviewSessionComponent({
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
             <div className="text-left">
               <h4 className="text-[11px] font-bold text-white tracking-wide uppercase">{session.company || "CORPORATE"} BOARDROOM</h4>
-              <p className="text-[9px] text-slate-400 font-medium">Secure Virtual Room • Q{session.currentQuestionIndex + 1} of {totalQuestions}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-[9px] text-slate-400 font-medium">Secure Virtual Room • Q{session.currentQuestionIndex + 1} of {totalQuestions}</p>
+                <span className="text-[8px] font-mono text-indigo-300 font-bold bg-indigo-950/60 border border-indigo-900/30 px-1.5 py-0.5 rounded">
+                  Elapsed: {Math.floor(sessionElapsed / 60)}:{(sessionElapsed % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
             </div>
           </div>
           
@@ -997,23 +1072,15 @@ export default function InterviewSessionComponent({
             {onDeleteSession && (
               <button 
                 onClick={() => {
-                  if (!isConfirmingDelete) {
-                    setIsConfirmingDelete(true);
-                    setTimeout(() => setIsConfirmingDelete(false), 4000);
-                  } else {
+                  if (window.confirm("Are you sure you want to discard this mock interview session? All recorded transcript answers and temporary scores will be lost permanently.")) {
                     onDeleteSession();
-                    setIsConfirmingDelete(false);
                   }
                 }}
-                className={`px-2 py-1 rounded-lg text-[9px] font-bold transition duration-300 flex items-center gap-1 cursor-pointer border ${
-                  isConfirmingDelete 
-                    ? "bg-rose-600 hover:bg-rose-700 text-white border-rose-600 animate-pulse" 
-                    : "bg-slate-850 hover:bg-rose-500/10 text-slate-400 hover:text-rose-300 border-slate-700 hover:border-rose-500/20"
-                }`}
-                title={isConfirmingDelete ? "Click again to confirm discard" : "Discard and delete this interview session"}
+                className="px-2 py-1 rounded-lg text-[9px] font-bold transition duration-300 flex items-center gap-1 cursor-pointer border bg-slate-850 hover:bg-rose-500/10 text-slate-400 hover:text-rose-300 border-slate-700 hover:border-rose-500/20"
+                title="Discard and delete this interview session"
               >
                 <Trash2 size={10} />
-                <span>{isConfirmingDelete ? "Confirm Discard" : "Discard"}</span>
+                <span>Discard</span>
               </button>
             )}
             

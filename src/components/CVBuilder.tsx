@@ -10,6 +10,8 @@ import {
   Code, ShieldAlert, Copy, Check, Eye
 } from "lucide-react";
 import { Resume } from "../types";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 interface CVBuilderProps {
   resumes: Resume[];
@@ -130,6 +132,12 @@ export default function CVBuilder({
   const [techSkills, setTechSkills] = useState("R programming, Python, SQL, Excel VBA, PowerBI, Tableau, Git");
   const [actuarialSkills, setActuarialSkills] = useState("Stochastic Reserving, Life Contingencies, GLM Rating, Claims Modeling, Solvency II, IFRS 17");
 
+  // Four customizable core skill categories
+  const [skillActuarial, setSkillActuarial] = useState("Stochastic Reserving, Life Contingencies, GLM Rating, Claims Modeling, Solvency II, IFRS 17");
+  const [skillTechTools, setSkillTechTools] = useState("R programming, Python, SQL, Excel VBA, PowerBI, Tableau, Git");
+  const [skillDataProcess, setSkillDataProcess] = useState("Model Validation, Data Processing, Workflow Automation, API Integration");
+  const [skillSoftSkills, setSkillSoftSkills] = useState("Problem Solving, Analytical Thinking, Communication, Professional Conduct");
+
   // Local storage save/load
   useEffect(() => {
     const saved = localStorage.getItem("platform_cv_builder_data");
@@ -150,6 +158,10 @@ export default function CVBuilder({
         if (parsed.actuarialPapers) setActuarialPapers(parsed.actuarialPapers);
         if (parsed.techSkills) setTechSkills(parsed.techSkills);
         if (parsed.actuarialSkills) setActuarialSkills(parsed.actuarialSkills);
+        if (parsed.skillActuarial) setSkillActuarial(parsed.skillActuarial);
+        if (parsed.skillTechTools) setSkillTechTools(parsed.skillTechTools);
+        if (parsed.skillDataProcess) setSkillDataProcess(parsed.skillDataProcess);
+        if (parsed.skillSoftSkills) setSkillSoftSkills(parsed.skillSoftSkills);
       } catch (e) {
         console.error("Error loading CV data from local storage", e);
       }
@@ -177,7 +189,8 @@ export default function CVBuilder({
     setTimeout(() => {
       saveToLocalStorage({
         name, role, email, phone, location, linkedin, website, summary,
-        experiences, projects, education, actuarialPapers, techSkills, actuarialSkills
+        experiences, projects, education, actuarialPapers, techSkills, actuarialSkills,
+        skillActuarial, skillTechTools, skillDataProcess, skillSoftSkills
       });
     }, 50);
   };
@@ -200,6 +213,108 @@ export default function CVBuilder({
   const [activeSubTab, setActiveSubTab] = useState<"edit" | "preview">("edit");
   const [showCopyNotice, setShowCopyNotice] = useState(false);
 
+  const [isImportingPDF, setIsImportingPDF] = useState(false);
+  const [pdfImportError, setPdfImportError] = useState<string | null>(null);
+
+  const handleDirectPDFImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImportingPDF(true);
+    setPdfImportError(null);
+
+    try {
+      const rawText = await file.text();
+      let extractedText = rawText;
+      
+      const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+      if (isPdf) {
+        const matches = rawText.match(/\(([^)]+)\)/g);
+        if (matches && matches.length > 5) {
+          const cleaned = matches
+            .map(m => m.slice(1, -1))
+            .filter(t => t.trim().length > 1 && !t.includes("font") && !t.includes("PDF") && !t.includes("/Obj") && !t.includes("ProcSet"))
+            .join(" ")
+            .replace(/\\([\d]{3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)))
+            .replace(/\\/g, "");
+          if (cleaned.trim().length > 100) {
+            extractedText = cleaned;
+          }
+        } else {
+          const textOnly = rawText
+            .replace(/[\x00-\x1F\x7F-\x9F]/g, " ")
+            .replace(/[^a-zA-Z0-9\s,.\-@_()]/g, "")
+            .replace(/\s+/g, " ");
+          if (textOnly.trim().length > 100) {
+            extractedText = textOnly.substring(0, 15000);
+          }
+        }
+      }
+
+      const res = await fetch("/api/parse-resume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: extractedText, filename: file.name })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to parse the uploaded PDF resume on the server.");
+      }
+
+      const data = await res.json();
+      if (data && data.skills) {
+        updateStateAndPersist(() => {
+          if (data.skills.technical && data.skills.technical.length > 0) {
+            const techStr = data.skills.technical.join(", ");
+            setSkillTechTools(techStr);
+          }
+          if (data.skills.soft && data.skills.soft.length > 0) {
+            const softStr = data.skills.soft.join(", ");
+            setSkillSoftSkills(softStr);
+          }
+          if (data.experience && data.experience.length > 0) {
+            const mapped = data.experience.map((exp: any) => ({
+              role: exp.role || "Actuarial Associate",
+              company: exp.company || "Insurance Corp",
+              location: "Remote",
+              duration: exp.duration || "1 Year",
+              description: exp.description || ""
+            }));
+            setExperiences(mapped);
+          }
+          if (data.projects && data.projects.length > 0) {
+            const mappedProj = data.projects.map((proj: any) => ({
+              title: proj.title || "Stochastic Simulation Project",
+              tech: proj.technologies ? proj.technologies.join(", ") : "R, VBA",
+              description: proj.description || ""
+            }));
+            setProjects(mappedProj);
+          }
+          if (data.education && data.education.length > 0) {
+            const mappedEd = data.education.map((ed: any) => ({
+              degree: ed.degree || "B.Sc. Actuarial Science",
+              institution: ed.institution || "Institute of Actuaries",
+              year: ed.year || "2023",
+              grade: "First Class"
+            }));
+            setEducation(mappedEd);
+          }
+          
+          alert("Successfully parsed and imported your PDF resume details!");
+        });
+      } else {
+        throw new Error("No structured data returned from the resume parser.");
+      }
+    } catch (err: any) {
+      console.error("PDF Resume Import Error:", err);
+      setPdfImportError(err.message || "Could not read or parse this PDF resume.");
+    } finally {
+      setIsImportingPDF(false);
+    }
+  };
+
   // Import from parsed resume if they have one uploaded
   const handleImportFromCV = (resumeId: string) => {
     const selected = resumes.find(r => r.id === resumeId);
@@ -212,7 +327,9 @@ export default function CVBuilder({
       // Map skills
       if (parsed.skills) {
         if (parsed.skills.technical && parsed.skills.technical.length > 0) {
-          setTechSkills(parsed.skills.technical.join(", "));
+          const skillsStr = parsed.skills.technical.join(", ");
+          setTechSkills(skillsStr);
+          setSkillTechTools(skillsStr);
         }
       }
 
@@ -412,10 +529,297 @@ export default function CVBuilder({
     });
   };
 
-  // Browser-native vector printing trigger
-  const handleDownloadPDF = () => {
+  // Robust programmatic high-fidelity ATS-friendly PDF exporter
+  const handleDownloadPDF = async () => {
     onAddXp(30);
-    window.print();
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4"
+    });
+
+    const pageWidth = 595;
+    const pageHeight = 842;
+    const margin = 40;
+    const contentWidth = pageWidth - (margin * 2);
+
+    let y = 50;
+
+    // Helper to check for page overflow
+    const checkPageOverflow = (neededHeight: number) => {
+      if (y + neededHeight > pageHeight - margin) {
+        doc.addPage();
+        y = 50;
+      }
+    };
+
+    // Helper to draw a section header
+    const drawSectionHeader = (title: string) => {
+      checkPageOverflow(40);
+      y += 12;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42); // #0f172a
+      doc.text(title.toUpperCase(), margin, y);
+      y += 5;
+      doc.setDrawColor(203, 213, 225); // #cbd5e1
+      doc.setLineWidth(1);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 14;
+    };
+
+    // 1. HEADER (Name, Role, and Contact Details)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42);
+    const upperName = (name || "YOUR FULL NAME").toUpperCase();
+    doc.text(upperName, margin, y);
+    y += 20;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(79, 70, 229); // #4f46e5 (Indigo)
+    doc.text((role || "Actuarial Associate / Candidate").toUpperCase(), margin, y);
+    y += 14;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105); // #475569
+
+    const contactParts = [
+      email ? `Email: ${email}` : "",
+      phone ? `Phone: ${phone}` : "",
+      location ? `Loc: ${location}` : "",
+      linkedin ? `LI: ${linkedin}` : "",
+      website ? `Web: ${website}` : ""
+    ].filter(Boolean);
+
+    const contactText = contactParts.join("   |   ");
+    const contactLines = doc.splitTextToSize(contactText, contentWidth);
+    doc.text(contactLines, margin, y);
+    y += (contactLines.length * 12) + 6;
+
+    // Draw solid line beneath header
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(1.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 18;
+
+    // 2. PROFESSIONAL SUMMARY
+    if (summary) {
+      drawSectionHeader("Professional Summary");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(51, 65, 85); // #334155
+      const summaryLines = doc.splitTextToSize(summary, contentWidth);
+      doc.text(summaryLines, margin, y, { align: "justify" });
+      y += (summaryLines.length * 13) + 12;
+    }
+
+    // 3. ACTUARIAL CREDENTIALS & EXAMINATIONS
+    drawSectionHeader("Actuarial Credentials & Examinations");
+    
+    checkPageOverflow(45);
+    doc.setFillColor(248, 250, 252); // #f8fafc
+    doc.setDrawColor(226, 232, 240); // #e2e8f0
+    doc.setLineWidth(1);
+    doc.roundedRect(margin, y, contentWidth, 34, 4, 4, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139); // #64748b
+    doc.text("PRIMARY AFFILIATION", margin + 12, y + 12);
+    doc.text("PROFESSIONAL STANDING", margin + (contentWidth / 2) + 12, y + 12);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    const primaryAff = actuarialBoard === "Both" ? "IAI & IFoA UK" : actuarialBoard === "IAI" ? "Institute of Actuaries of India" : "Institute & Faculty of Actuaries, UK";
+    doc.text(primaryAff, margin + 12, y + 24);
+    doc.text(`${examsCleared} Exams Cleared`, margin + (contentWidth / 2) + 12, y + 24);
+    y += 46;
+
+    // Papers list
+    if (actuarialPapers.length > 0) {
+      actuarialPapers.forEach(paper => {
+        checkPageOverflow(20);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        const codeText = paper.code || "N/A";
+        doc.text(codeText, margin, y);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(51, 65, 85);
+        doc.text(`— ${paper.title || "Subject Title"}`, margin + 60, y);
+
+        // Right side details
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(79, 70, 229);
+        const boardText = paper.board;
+        const rightDetails = ` |  ${paper.year || "Pending"}${paper.marks ? `  |  Marks: ${paper.marks}` : ""}`;
+        
+        const rightColX = pageWidth - margin - 150;
+        doc.text(boardText, rightColX, y);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(71, 85, 105);
+        doc.text(rightDetails, rightColX + 35, y);
+
+        y += 4;
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 14;
+      });
+      y += 6;
+    }
+
+    // 4. PROFESSIONAL EXPERIENCE
+    if (experiences.length > 0) {
+      drawSectionHeader("Professional Experience");
+      experiences.forEach(exp => {
+        checkPageOverflow(70);
+        
+        // Role & Company
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
+        const roleText = `${exp.role} — `;
+        doc.text(roleText, margin, y);
+        const roleWidth = doc.getTextWidth(roleText);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(51, 65, 85);
+        doc.text(exp.company, margin + roleWidth, y);
+
+        // Duration & Location on the right
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        const rightText = `${exp.duration}  |  ${exp.location}`;
+        doc.text(rightText, pageWidth - margin, y, { align: "right" });
+        y += 12;
+
+        // Description with left border
+        const descLines = doc.splitTextToSize(exp.description, contentWidth - 12);
+        checkPageOverflow((descLines.length * 13) + 8);
+
+        // Draw left border line
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(1.5);
+        doc.line(margin + 4, y - 4, margin + 4, y + (descLines.length * 13) - 8);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(descLines, margin + 12, y);
+        y += (descLines.length * 13) + 8;
+      });
+    }
+
+    // 5. PROJECTS
+    if (projects.length > 0) {
+      drawSectionHeader("Modeling & Technical Projects");
+      projects.forEach(proj => {
+        checkPageOverflow(50);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(proj.title, margin, y);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(79, 70, 229);
+        doc.text(proj.tech, pageWidth - margin, y, { align: "right" });
+        y += 12;
+
+        const projLines = doc.splitTextToSize(proj.description, contentWidth);
+        checkPageOverflow(projLines.length * 13);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(projLines, margin, y, { align: "justify" });
+        y += (projLines.length * 13) + 10;
+      });
+    }
+
+    // 6. EDUCATION
+    if (education.length > 0) {
+      drawSectionHeader("Academic Qualifications");
+      education.forEach(ed => {
+        checkPageOverflow(40);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text(ed.degree, margin, y);
+
+        doc.setFont("helvetica", "bold");
+        doc.text(ed.year, pageWidth - margin, y, { align: "right" });
+        y += 12;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(ed.institution, margin, y);
+        doc.text(ed.grade, pageWidth - margin, y, { align: "right" });
+        y += 18;
+      });
+    }
+
+    // 7. CORE COMPETENCIES & SKILLS
+    const skillsToDraw = [
+      { label: "Actuarial & Analytics", val: skillActuarial },
+      { label: "Technical Tools", val: skillTechTools },
+      { label: "Data & Process", val: skillDataProcess },
+      { label: "Soft Skills", val: skillSoftSkills }
+    ].filter(s => s.val && s.val.trim());
+
+    if (skillsToDraw.length > 0) {
+      drawSectionHeader("Core Competencies & Skills");
+      checkPageOverflow(50);
+
+      for (let i = 0; i < skillsToDraw.length; i += 2) {
+        checkPageOverflow(40);
+        const col1 = skillsToDraw[i];
+        const col2 = skillsToDraw[i + 1];
+
+        // Column 1
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(79, 70, 229);
+        doc.text(col1.label.toUpperCase(), margin, y);
+        y += 11;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        const lines1 = doc.splitTextToSize(col1.val, (contentWidth / 2) - 10);
+        doc.text(lines1, margin, y);
+
+        let col1Height = lines1.length * 12;
+
+        // Column 2
+        let col2Height = 0;
+        if (col2) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(79, 70, 229);
+          doc.text(col2.label.toUpperCase(), margin + (contentWidth / 2) + 10, y - 11);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(71, 85, 105);
+          const lines2 = doc.splitTextToSize(col2.val, (contentWidth / 2) - 10);
+          doc.text(lines2, margin + (contentWidth / 2) + 10, y);
+          col2Height = lines2.length * 12;
+        }
+
+        y += Math.max(col1Height, col2Height) + 16;
+      }
+    }
+
+    doc.save(`${name.replace(/\s+/g, "_")}_Actuarial_CV.pdf`);
   };
 
   const handleCopyText = () => {
@@ -560,35 +964,188 @@ ${actuarialSkills}
         {activeSubTab === "edit" ? (
           <div className="lg:col-span-2 space-y-5 text-left no-print">
             
-            {/* Quick Resume Import Selector */}
-            {resumes.length > 0 && (
-              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="space-y-0.5">
-                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                    <Sparkles size={13} className="text-indigo-500 animate-pulse" /> Import Existing Document Details
-                  </h4>
-                  <p className="text-[10px] text-slate-400">Pre-populate all CV Builder fields instantly using parsed data from your Document Center.</p>
+            {/* Dual PDF Import Center */}
+            <div className="p-5 bg-indigo-50/40 border border-indigo-100 rounded-2xl space-y-4">
+              <div className="flex items-center gap-1.5 border-b border-indigo-100/60 pb-2">
+                <Sparkles size={14} className="text-indigo-600 animate-pulse" />
+                <div>
+                  <h4 className="text-xs font-black text-slate-800">Smart PDF Resume Import Center</h4>
+                  <p className="text-[10px] text-slate-400">Pre-populate all builder fields instantly using our server-side PDF intelligence.</p>
                 </div>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) handleImportFromCV(e.target.value);
-                  }}
-                  className="bg-white border border-indigo-200/80 rounded-xl px-3 py-1.5 text-[11px] font-bold text-slate-700 cursor-pointer focus:outline-none"
-                  defaultValue=""
-                >
-                  <option value="" disabled>-- Select Document to Import --</option>
-                  {resumes.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
               </div>
-            )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Option 1: Direct File Upload */}
+                <div className="p-3 bg-white border border-indigo-100 rounded-xl space-y-2 text-center">
+                  <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">Option A: Direct PDF Upload</span>
+                  <p className="text-[9px] text-slate-400">Select any PDF resume from your local computer device.</p>
+                  
+                  <label className="inline-flex items-center justify-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-lg cursor-pointer uppercase transition">
+                    {isImportingPDF ? "Processing PDF..." : "Upload local PDF"}
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleDirectPDFImport}
+                      className="hidden"
+                      disabled={isImportingPDF}
+                    />
+                  </label>
+                </div>
+
+                {/* Option 2: Document Center Selection */}
+                <div className="p-3 bg-white border border-indigo-100 rounded-xl space-y-2 text-center flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider block">Option B: From Document Center</span>
+                    <p className="text-[9px] text-slate-400">
+                      {resumes.length > 0 ? "Import an already uploaded document from your files." : "No documents uploaded in Document Center yet."}
+                    </p>
+                  </div>
+
+                  {resumes.length > 0 ? (
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) handleImportFromCV(e.target.value);
+                      }}
+                      className="w-full bg-slate-50 border border-indigo-200 rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 cursor-pointer focus:outline-none"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>-- Choose Document --</option>
+                      {resumes.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="text-[9px] text-slate-400 italic py-1">No documents available.</div>
+                  )}
+                </div>
+              </div>
+
+              {pdfImportError && (
+                <div className="p-2 bg-rose-50 text-rose-700 text-[10px] rounded-lg border border-rose-100 font-semibold">
+                  ⚠️ {pdfImportError}
+                </div>
+              )}
+            </div>
+
+            {/* Section: Personal Info */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                <User size={14} className="text-brand-500" /> 1. Personal Information
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => updateStateAndPersist(() => setName(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Target Job Title / Standing</label>
+                  <input
+                    type="text"
+                    value={role}
+                    onChange={(e) => updateStateAndPersist(() => setRole(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => updateStateAndPersist(() => setEmail(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Contact Phone Number</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => updateStateAndPersist(() => setPhone(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">City & Country</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => updateStateAndPersist(() => setLocation(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">LinkedIn Profile Handle</label>
+                  <input
+                    type="text"
+                    value={linkedin}
+                    onChange={(e) => updateStateAndPersist(() => setLinkedin(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">GitHub / Portfolio Website</label>
+                  <input
+                    type="text"
+                    value={website}
+                    onChange={(e) => updateStateAndPersist(() => setWebsite(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Professional Summary & AI Enhancer */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText size={14} className="text-indigo-500" /> 2. Professional Summary
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleEnhanceSummary}
+                  disabled={enhancingSummary || !summary.trim()}
+                  className="px-2.5 py-1 text-[10px] font-bold text-indigo-700 hover:text-white hover:bg-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-1 transition shrink-0 cursor-pointer disabled:opacity-50"
+                >
+                  {enhancingSummary ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={10} /> Expanding...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={10} /> AI Optimize Summary
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <textarea
+                  rows={4}
+                  value={summary}
+                  onChange={(e) => updateStateAndPersist(() => setSummary(e.target.value))}
+                  placeholder="Summarize your top actuarial qualifications, cleared exams, and key modeling competencies..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed focus:outline-none focus:bg-white focus:border-brand-500"
+                />
+              </div>
+            </div>
 
             {/* Core Actuarial Credentials Standing (IAI & IFoA specific) */}
             <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Award size={14} className="text-amber-500" /> IAI & IFoA Standing Parameters
+                  <Award size={14} className="text-amber-500" /> 3. IAI & IFoA Standing Parameters
                 </h3>
                 <button
                   type="button"
@@ -726,125 +1283,11 @@ ${actuarialSkills}
               </div>
             </div>
 
-            {/* Section: Personal Info */}
-            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                <User size={14} className="text-brand-500" /> 1. Personal Information
-              </h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => updateStateAndPersist(() => setName(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Target Job Title / Standing</label>
-                  <input
-                    type="text"
-                    value={role}
-                    onChange={(e) => updateStateAndPersist(() => setRole(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Email Address</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => updateStateAndPersist(() => setEmail(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Contact Phone Number</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => updateStateAndPersist(() => setPhone(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">City & Country</label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => updateStateAndPersist(() => setLocation(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">LinkedIn Profile Handle</label>
-                  <input
-                    type="text"
-                    value={linkedin}
-                    onChange={(e) => updateStateAndPersist(() => setLinkedin(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">GitHub / Portfolio Website</label>
-                  <input
-                    type="text"
-                    value={website}
-                    onChange={(e) => updateStateAndPersist(() => setWebsite(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Professional Summary & AI Enhancer */}
-            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText size={14} className="text-indigo-500" /> 2. Professional Summary
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleEnhanceSummary}
-                  disabled={enhancingSummary || !summary.trim()}
-                  className="px-2.5 py-1 text-[10px] font-bold text-indigo-700 hover:text-white hover:bg-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-1 transition shrink-0 cursor-pointer disabled:opacity-50"
-                >
-                  {enhancingSummary ? (
-                    <>
-                      <RefreshCw className="animate-spin" size={10} /> Expanding...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={10} /> AI Optimize Summary
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <textarea
-                  rows={4}
-                  value={summary}
-                  onChange={(e) => updateStateAndPersist(() => setSummary(e.target.value))}
-                  placeholder="Summarize your top actuarial qualifications, cleared exams, and key modeling competencies..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed focus:outline-none focus:bg-white focus:border-brand-500"
-                />
-              </div>
-            </div>
-
             {/* Section: Work Experience */}
             <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Briefcase size={14} className="text-emerald-500" /> 3. Professional Work Experience
+                  <Briefcase size={14} className="text-emerald-500" /> 4. Professional Work Experience
                 </h3>
                 <button
                   type="button"
@@ -964,7 +1407,7 @@ ${actuarialSkills}
             <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Code size={14} className="text-indigo-500" /> 4. Modeling & Research Projects
+                  <Code size={14} className="text-indigo-500" /> 5. Modeling & Research Projects
                 </h3>
                 <button
                   type="button"
@@ -1038,7 +1481,7 @@ ${actuarialSkills}
             <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <GraduationCap size={14} className="text-amber-500" /> 5. Academic Credentials
+                  <GraduationCap size={14} className="text-amber-500" /> 6. Academic Credentials
                 </h3>
                 <button
                   type="button"
@@ -1126,28 +1569,53 @@ ${actuarialSkills}
 
             {/* Section: Technical & Actuarial Skills Lists */}
             <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                <Code size={14} className="text-brand-500" /> 6. Key Core Skills
-              </h3>
+              <div className="space-y-1">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <Code size={14} className="text-brand-500" /> 7. Key Core Skills
+                </h3>
+                <p className="text-[10px] text-slate-400 font-semibold">
+                  Organize your skills professionally. Leave any field completely blank to automatically hide that category from appearing on your CV.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Programming & Software Tools</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Actuarial & Analytics</label>
                   <textarea
                     rows={2}
-                    value={techSkills}
-                    onChange={(e) => updateStateAndPersist(() => setTechSkills(e.target.value))}
+                    value={skillActuarial}
+                    onChange={(e) => updateStateAndPersist(() => setSkillActuarial(e.target.value))}
+                    placeholder="e.g. Stochastic Reserving, Life Contingencies, GLM Rating, Claims Modeling"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-normal focus:outline-none focus:bg-white focus:border-brand-500 font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Technical Tools</label>
+                  <textarea
+                    rows={2}
+                    value={skillTechTools}
+                    onChange={(e) => updateStateAndPersist(() => setSkillTechTools(e.target.value))}
                     placeholder="e.g. R programming, Python, SQL, Excel VBA, Prophet"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-normal focus:outline-none focus:bg-white focus:border-brand-500 font-mono"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Actuarial Practice Specialties</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Data & Process</label>
                   <textarea
                     rows={2}
-                    value={actuarialSkills}
-                    onChange={(e) => updateStateAndPersist(() => setActuarialSkills(e.target.value))}
-                    placeholder="e.g. Stochastic Reserving, GLM, Claims Modeling, IFRS 17"
+                    value={skillDataProcess}
+                    onChange={(e) => updateStateAndPersist(() => setSkillDataProcess(e.target.value))}
+                    placeholder="e.g. Model Validation, Data Processing, Workflow Automation, API Integration"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-normal focus:outline-none focus:bg-white focus:border-brand-500 font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Soft Skills</label>
+                  <textarea
+                    rows={2}
+                    value={skillSoftSkills}
+                    onChange={(e) => updateStateAndPersist(() => setSkillSoftSkills(e.target.value))}
+                    placeholder="e.g. Problem Solving, Analytical Thinking, Communication, Professional Conduct"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-normal focus:outline-none focus:bg-white focus:border-brand-500 font-mono"
                   />
                 </div>
@@ -1183,6 +1651,14 @@ ${actuarialSkills}
                     {website && <span className="flex items-center gap-1"><Link2 size={11} /> {website}</span>}
                   </div>
                 </div>
+
+                {/* Summary section */}
+                {summary && (
+                  <div className="pt-4 space-y-1.5">
+                    <h4 className="text-xs font-black text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-1 font-mono">Professional Summary</h4>
+                    <p className="text-xs text-slate-600 leading-relaxed font-normal">{summary}</p>
+                  </div>
+                )}
 
                 {/* Actuarial Credentials Standing (IAI & IFoA specific) */}
                 <div className="pt-4 space-y-3">
@@ -1224,14 +1700,6 @@ ${actuarialSkills}
                     </div>
                   )}
                 </div>
-
-                {/* Summary section */}
-                {summary && (
-                  <div className="pt-4 space-y-1.5">
-                    <h4 className="text-xs font-black text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-1 font-mono">Professional Summary</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed font-normal">{summary}</p>
-                  </div>
-                )}
 
                 {/* Experience section */}
                 {experiences.length > 0 && (
@@ -1291,26 +1759,37 @@ ${actuarialSkills}
                 )}
 
                 {/* Skills section */}
-                <div className="pt-4 grid grid-cols-2 gap-4">
-                  {techSkills && (
-                    <div className="space-y-1">
-                      <h4 className="text-[10px] font-black text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-1 font-mono">Programming & Systems</h4>
-                      <p className="text-xs text-slate-600 font-normal">{techSkills}</p>
-                    </div>
-                  )}
-                  {actuarialSkills && (
-                    <div className="space-y-1">
-                      <h4 className="text-[10px] font-black text-slate-900 tracking-wider uppercase border-b border-slate-100 pb-1 font-mono">Actuarial Domain Knowledge</h4>
-                      <p className="text-xs text-slate-600 font-normal">{actuarialSkills}</p>
-                    </div>
-                  )}
+                <div className="pt-4 border-t border-slate-200 mt-4">
+                  <h4 className="text-xs font-black text-slate-900 tracking-wider uppercase border-b border-slate-200 pb-1 font-mono mb-3 font-bold">Core Competencies & Skills</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {skillActuarial && skillActuarial.trim() && (
+                      <div className="space-y-1">
+                        <h5 className="text-[10px] font-bold text-indigo-700 tracking-wider uppercase font-mono font-bold">Actuarial & Analytics</h5>
+                        <p className="text-xs text-slate-600 font-normal leading-relaxed">{skillActuarial}</p>
+                      </div>
+                    )}
+                    {skillTechTools && skillTechTools.trim() && (
+                      <div className="space-y-1">
+                        <h5 className="text-[10px] font-bold text-indigo-700 tracking-wider uppercase font-mono font-bold">Technical Tools</h5>
+                        <p className="text-xs text-slate-600 font-normal leading-relaxed">{skillTechTools}</p>
+                      </div>
+                    )}
+                    {skillDataProcess && skillDataProcess.trim() && (
+                      <div className="space-y-1">
+                        <h5 className="text-[10px] font-bold text-indigo-700 tracking-wider uppercase font-mono font-bold">Data & Process</h5>
+                        <p className="text-xs text-slate-600 font-normal leading-relaxed">{skillDataProcess}</p>
+                      </div>
+                    )}
+                    {skillSoftSkills && skillSoftSkills.trim() && (
+                      <div className="space-y-1">
+                        <h5 className="text-[10px] font-bold text-indigo-700 tracking-wider uppercase font-mono font-bold">Soft Skills</h5>
+                        <p className="text-xs text-slate-600 font-normal leading-relaxed">{skillSoftSkills}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Minimalist Professional Footer Credential */}
-              <div className="pt-6 border-t border-slate-100 text-center text-[9px] text-slate-400 font-mono tracking-wide">
-                <span>IAI & IFoA Standard Certified Curriculum. Digitally compiled on AI Career OS.</span>
-              </div>
             </div>
 
           </div>

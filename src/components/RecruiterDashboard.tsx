@@ -903,7 +903,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
       skill: newSkillGap,
       impact: "Critical Match Key",
       isCompleted: false,
-      resources: ["AICOS Sandbox Practice"]
+      resources: ["Actuarial Sandbox Practice"]
     };
 
     const updatedGaps = [...(roadmapData.skillGaps || []), newGap];
@@ -970,7 +970,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({
         atsStatus: "Pre-screened",
         interviewScore: Math.floor(Math.random() * 20) + 75,
         avatarColor: "bg-rose-500",
-        email: `${generatedResult.name.toLowerCase().replace(/\s/g, "")}@candidate-aicos.net`,
+        email: `${generatedResult.name.toLowerCase().replace(/\s/g, "")}@candidate-actuary.net`,
         skills: ["TypeScript", "React", "Node.js", "AI Integrations", "System Design"],
         scorecard: { technical: Math.floor(Math.random() * 20) + 80, communication: Math.floor(Math.random() * 20) + 80, logical: Math.floor(Math.random() * 20) + 80, matching: generatedResult.overallScore },
         appliedDate: new Date().toISOString().split('T')[0],

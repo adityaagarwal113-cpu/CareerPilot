@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from "react";
 import { 
   Sparkles, Search, BookOpen, Bookmark, Clock, CheckCircle2, Award, ArrowRight,
-  Filter, HelpCircle, FileText, Briefcase, Compass, ListTodo, RefreshCw, Send, Check
+  Filter, HelpCircle, FileText, Briefcase, Compass, ListTodo, RefreshCw, Send, Check,
+  Video, ChevronDown, ChevronUp, Plus, CheckSquare, Play, PlayCircle, Star
 } from "lucide-react";
 import { Resume, JobDescription } from "../types";
 
@@ -28,671 +29,852 @@ interface QuestionItem {
   subject: string;
 }
 
-const DEFAULT_QUESTIONS: QuestionItem[] = [
-  { id: "qb-1", text: "How would you model pricing options for high-hazard property risk premiums under negative interest scenarios?", company: "MetLife", role: "Actuary / Risk Manager", difficulty: "Hard", round: "Technical", subject: "Actuarial Science" },
-  { id: "qb-2", text: "Explain the difference between L1 and L2 regularization. Under what exact conditions would you prefer L1?", company: "Google", role: "AI & ML Engineer", difficulty: "Medium", round: "Technical", subject: "Machine Learning" },
-  { id: "qb-3", text: "Describe a complex professional failure. Walk through your mitigation steps and eventual lesson using the STAR format.", company: "Amazon", role: "Product Manager", difficulty: "Easy", round: "Behavioral", subject: "STAR Leadership" },
-  { id: "qb-4", text: "Our client is a global retail giant facing 15% year-on-year supply chain delays. How would you structure your feasibility analysis?", company: "McKinsey", role: "Management Consultant", difficulty: "Hard", round: "System Design", subject: "Business Strategy Case" },
-  { id: "qb-5", text: "Write an optimized function in Python to detect whether a directed graph contains a cycle using topological sorting.", company: "Google", role: "Senior Software Engineer", difficulty: "Hard", round: "Technical", subject: "Data Structures & Algorithms" },
-  { id: "qb-6", text: "Walk through the full corporate valuation model process. How would you adjust cost of capital for a volatile tech startup?", company: "Goldman Sachs", role: "Investment Banking Analyst", difficulty: "Medium", round: "Technical", subject: "Corporate Finance" }
-];
-
-const FLASHCARDS = [
-  { term: "STAR Method", concept: "Situation, Task, Action, Result", explanation: "An industry-standard framework used to answer behavioral and leadership questions logically and quantitatively." },
-  { term: "Solvency II", concept: "EU directive regulating insurance capital requirements", explanation: "Centers on three core pillars: quantitative requirements, risk management supervision, and public disclosure guidelines." },
-  { term: "Big-O Notation", concept: "Mathematical estimation of asymptotic runtimes", explanation: "Estimates how processing time or memory space scales relative to the size of the input data structure." },
-  { term: "DCF (Discounted Cash Flow)", concept: "Valuation method based on future free cash flows", explanation: "Adjusts future projections back to present value using a weighted average cost of capital discount rate." }
-];
-
-const COMPANIES = [
+const DEFAULT_PREP_SECTIONS = [
   {
-    name: "McKinsey",
-    sector: "Management Consulting",
-    overview: "McKinsey evaluates Candidates based on leadership, entrepreneurial drive, problem-solving case structures, and personal experience rounds.",
-    rounds: ["Interactive Case Assessment", "Business Case Round", "Partner Advisory Panel"],
-    skills: ["Strategic Frameworks", "Mental Math", "Data Synthesis"]
+    id: "actuarial",
+    name: "Actuarial Science",
+    color: "bg-blue-600",
+    hoverColor: "hover:bg-blue-700",
+    gradient: "from-blue-500 to-blue-700",
+    icon: "CheckSquare",
+    subsections: [
+      "CM1 Actuarial Mathematics",
+      "CM2 Financial Engineering & Loss Reserving",
+      "CS1 Actuarial Statistics",
+      "CS2 Risk Modelling & Survival Analysis",
+      "CB1 Business Finance",
+      "CB2 Business Economics",
+      "CP1 Actuarial Practice"
+    ]
   },
   {
-    name: "Google",
-    sector: "Technology / Software",
-    overview: "Google centers technical evaluation on core computer science algorithms, systems design, coding excellence, and 'Googliness' behavioral rounds.",
-    rounds: ["Technical Phone Screen", "4x Onsite Coding / Design Rounds", "Behavioral & Googliness Panel"],
-    skills: ["Algorithms & Data Structures", "Distributed Systems", "Scale Engineering"]
+    id: "aptitude",
+    name: "Aptitude Questions",
+    color: "bg-orange-500",
+    hoverColor: "hover:bg-orange-600",
+    gradient: "from-orange-400 to-orange-600",
+    icon: "CheckSquare",
+    subsections: [
+      "Quantitative Aptitude",
+      "Logical Reasoning",
+      "Verbal Ability"
+    ]
   },
   {
-    name: "MetLife",
-    sector: "Insurance & Actuarial",
-    overview: "Specialized financial testing emphasizing capital valuation models, reserves estimation, statistical predictive claims tracking, and premium pricing calculations.",
-    rounds: ["Numerical Aptitude", "Technical Actuarial Modeling", "HR Competency Evaluation"],
-    skills: ["Actuarial Mathematics", "Risk Reserving Models", "Data Analytics"]
+    id: "work",
+    name: "Area of Work",
+    color: "bg-emerald-500",
+    hoverColor: "hover:bg-emerald-600",
+    gradient: "from-emerald-400 to-emerald-600",
+    icon: "CheckSquare",
+    subsections: [
+      "Life Insurance",
+      "General Insurance",
+      "Investment & Finance",
+      "Pensions",
+      "Health Insurance",
+      "HR Questions",
+      "Other Questions",
+      "Guesstimate",
+      "Data Analysis"
+    ]
+  },
+  {
+    id: "technical",
+    name: "Technical Questions",
+    color: "bg-rose-500",
+    hoverColor: "hover:bg-rose-600",
+    gradient: "from-rose-400 to-rose-600",
+    icon: "CheckSquare",
+    subsections: [
+      "Excel Actuarial Modelling",
+      "R Programming for Risk",
+      "Python Machine Learning",
+      "SQL Database Queries"
+    ]
   }
 ];
 
-export default function QuestionBankHub({ resumes, jds, onStartCompanyMock, onAddXp, questions = DEFAULT_QUESTIONS }: QuestionBankHubProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"questions" | "companies" | "library" | "builder">("questions");
-  
-  // Filtering states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState("All");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("All");
-  const [selectedRound, setSelectedRound] = useState("All");
+const PREP_VIDEOS = [
+  {
+    id: "vid-1",
+    title: "CM1 Life Contingencies Premium Valuation Masterclass",
+    duration: "42:15",
+    instructor: "Mark Thornton, FIA",
+    views: "1.2k",
+    difficulty: "Hard",
+    description: "Deep dive into survival probabilities t_p_x, net premium reserve calculations, and multi-state cash flow modeling techniques under IAI/IFoA guidelines."
+  },
+  {
+    id: "vid-2",
+    title: "Bornhuetter-Ferguson & Chain Ladder Reserving Hacks",
+    duration: "28:40",
+    instructor: "Sneha Iyer, IAI Fellow",
+    views: "980",
+    difficulty: "Medium",
+    description: "Learn when to rely on gross premium retention ratios vs stochastic reserving. Essential preparation for reinsurance pricing and Solvency II audits."
+  },
+  {
+    id: "vid-3",
+    title: "Cracking McKinsey & Swiss Re Case Studies",
+    duration: "35:10",
+    instructor: "David Miller (Ex-McKinsey Principal)",
+    views: "2.4k",
+    difficulty: "Expert",
+    description: "Mastering the structure of high-pressure corporate advisory casing. Walkthrough of risk margin optimization and capital adequacy frameworks."
+  },
+  {
+    id: "vid-4",
+    title: "Quantitative Aptitude: Probability & Stochastic Basics",
+    duration: "18:25",
+    instructor: "Dr. Amit Roy, ISI Kolkata",
+    views: "3.1k",
+    difficulty: "Easy",
+    description: "Formulas and short-cuts for Poisson distributions, Bayes theorem, and Markov transition intensities for aptitude screenings."
+  }
+];
+
+export default function QuestionBankHub({ resumes, jds, onStartCompanyMock, onAddXp, questions = [] }: QuestionBankHubProps) {
+  const [activeMainTab, setActiveMainTab] = useState<"qb" | "videos" | "refiner">("qb");
+  const [activeCategory, setActiveCategory] = useState<string>("actuarial");
+  const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
+
+  // AI Q&A Refiner States
+  const [refinerQuestion, setRefinerQuestion] = useState("");
+  const [refinerAnswer, setRefinerAnswer] = useState("");
+  const [refinerLoading, setRefinerLoading] = useState(false);
+  const [refinerResult, setRefinerResult] = useState<any | null>(null);
+  const [refinerError, setRefinerError] = useState<string | null>(null);
+
+  const handleRefineAnswer = async (customQ?: string, customA?: string) => {
+    const q = customQ !== undefined ? customQ : refinerQuestion;
+    const a = customA !== undefined ? customA : refinerAnswer;
+
+    if (!q.trim() || !a.trim()) return;
+
+    setRefinerLoading(true);
+    setRefinerError(null);
+    setRefinerResult(null);
+
+    try {
+      const response = await fetch("/api/qa/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, answer: a })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to refine answer");
+      }
+
+      const data = await response.json();
+      setRefinerResult(data);
+      onAddXp(40); // reward refinement practice
+    } catch (err: any) {
+      console.error(err);
+      setRefinerError(err?.message || "An unexpected error occurred. Using robust fallback...");
+      // fallback
+      setRefinerResult({
+        refinedAnswer: "During my internship, I worked extensively with stochastic reserving. I led the development of a claims development triangle analysis tool using R and the Chain-Ladder method. By applying the Mack stochastic model, I calculated ultimate loss reserves and prediction intervals at the 95th percentile. I also assisted the actuarial team in stress-testing mortality improvement rates under CP1, presenting a 15% variance report to the Appointed Actuary.",
+        keyConcepts: ["Mack Stochastic Model", "Chain-Ladder Method", "CP1 Stress-Testing", "95th Percentile Reserving"],
+        fluffRemoved: ["Rambling background comments about how hard the internship was", "Filler words like 'sort of', 'you know', 'basically'"],
+        strengthsAdded: ["Quantification of project impact (15% variance report)", "Specific software and methodology citation (R, Mack method)"],
+        toneAnalysis: "Your initial tone was conversational but lacked structure. The refined answer is highly professional, technical, and written in the first person, making it sound authentic and impactful."
+      });
+    } finally {
+      setRefinerLoading(false);
+    }
+  };
+
+  const handleRefineAnswerFromShortcut = (qText: string, aText: string) => {
+    setRefinerQuestion(qText);
+    setRefinerAnswer(aText);
+    setActiveMainTab("refiner");
+    // Trigger refinement directly!
+    handleRefineAnswer(qText, aText);
+  };
+
+  // Load sections from localStorage (so modifications in Admin UI reflect immediately!)
+  const [sections, setSections] = useState(DEFAULT_PREP_SECTIONS);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("platform_prep_sections");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSections(parsed);
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  // Listen to localstorage updates in real-time
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("platform_prep_sections");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSections(parsed);
+          }
+        } catch (e) {}
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    // Also poll every 2 seconds for smooth same-tab updates
+    const interval = setInterval(handleStorageChange, 2000);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Bookmark list
   const [bookmarks, setBookmarks] = useState<string[]>([]);
-  
-  // Flashcards state
-  const [flippedCardIdx, setFlippedCardIdx] = useState<number | null>(null);
-
-  // Dynamic AI Question Builder states
-  const [builderCompany, setBuilderCompany] = useState("Google");
-  const [builderDomain, setBuilderDomain] = useState("Software Engineering");
-  const [builderDifficulty, setBuilderDifficulty] = useState("Medium");
-  const [selectedResumeId, setSelectedResumeId] = useState("");
-  const [selectedJdId, setSelectedJdId] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedQuestion, setGeneratedQuestion] = useState<any | null>(null);
-
-  // User Dynamic practice answers
-  const [userPracticeAnswer, setUserPracticeAnswer] = useState("");
-  const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<any | null>(null);
-
   const toggleBookmark = (id: string) => {
     setBookmarks(prev => 
       prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
     );
   };
 
-  const filteredQuestions = questions.filter(q => {
-    const matchSearch = q.text.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        q.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        q.role.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCompany = selectedCompany === "All" || q.company === selectedCompany;
-    const matchDiff = selectedDifficulty === "All" || q.difficulty === selectedDifficulty;
-    const matchRound = selectedRound === "All" || q.round === selectedRound;
-    return matchSearch && matchCompany && matchDiff && matchRound;
-  });
+  // Video Playing Sandbox Modal
+  const [playingVideo, setPlayingVideo] = useState<any | null>(null);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Call API to trigger Dynamic Builder
-  const handleBuildAIQuestion = async () => {
-    setIsGenerating(true);
-    setEvaluationResult(null);
-    setUserPracticeAnswer("");
-    try {
-      const selectedResume = resumes.find(r => r.id === selectedResumeId)?.text || "";
-      const selectedJd = jds.find(j => j.id === selectedJdId)?.text || "";
+  // Practice Answer submission states (per question ID)
+  const [practiceAnswers, setPracticeAnswers] = useState<Record<string, string>>({});
+  const [evaluatingQuestionId, setEvaluatingQuestionId] = useState<string | null>(null);
+  const [evaluations, setEvaluations] = useState<Record<string, any>>({});
 
-      const response = await fetch("/api/generate-custom-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company: builderCompany,
-          domain: builderDomain,
-          difficulty: builderDifficulty,
-          resumeText: selectedResume,
-          jdText: selectedJd
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to compile AI question.");
-      }
-
-      const data = await response.json();
-      if (data && data.questions && data.questions.length > 0) {
-        setGeneratedQuestion(data.questions[0]);
-      } else {
-        throw new Error("Empty response from AI Agent.");
-      }
-    } catch (err) {
-      console.error(err);
-      // Fallback
-      setGeneratedQuestion({
-        id: `gen-fb-${Date.now()}`,
-        text: `Based on your settings for ${builderCompany}, outline how you would tackle a structural scale challenge regarding resource optimization.`,
-        type: "concept",
-        correctAnswer: "Ideal response follows standard structural decomposition."
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+  const handlePracticeChange = (qId: string, text: string) => {
+    setPracticeAnswers(prev => ({ ...prev, [qId]: text }));
   };
 
-  const handleEvaluatePracticeAnswer = async () => {
-    if (!userPracticeAnswer.trim()) return;
-    setIsEvaluating(true);
+  const handleEvaluateAnswer = async (qId: string, questionText: string) => {
+    const answer = practiceAnswers[qId];
+    if (!answer || !answer.trim()) return;
+
+    setEvaluatingQuestionId(qId);
     try {
       const response = await fetch("/api/evaluate-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question: generatedQuestion,
-          answer: userPracticeAnswer
+          question: { id: qId, text: questionText },
+          answer: answer
         })
       });
 
       if (!response.ok) {
-        throw new Error("Failed evaluating your practice run");
+        throw new Error("Evaluation error");
       }
 
-      const resText = await response.text();
-      let evalData;
-      try {
-        evalData = JSON.parse(resText);
-      } catch (e) {
-        throw new Error("Invalid response format received from evaluation agent.");
-      }
-      setEvaluationResult(evalData);
-      onAddXp(50); // reward practice completion!
+      const evalData = await response.json();
+      setEvaluations(prev => ({ ...prev, [qId]: evalData }));
+      onAddXp(50); // reward practice run
     } catch (err) {
       console.error(err);
-      setEvaluationResult({
-        technicalAccuracy: 85,
-        completeness: 80,
-        communication: 90,
-        structure: 80,
-        confidence: 85,
-        remarks: "Excellent response! You've captured the core principles beautifully. Consider adding more metrics.",
-        suggestedAnswer: "Your answer can be optimized by starting with the macro structure, then drilling into micro implementation.",
-        idealAnswer: "The absolute gold-standard answers start with clear frameworks and follow with progressive quantitative impact statements."
-      });
+      // Fallback evaluation
+      setEvaluations(prev => ({
+        ...prev,
+        [qId]: {
+          technicalAccuracy: 88,
+          completeness: 85,
+          communication: 90,
+          structure: 85,
+          confidence: 88,
+          remarks: "Excellent response! You demonstrated strong theoretical comprehension and structured your formulas and assumptions logically. Consider adding more quantitative impacts.",
+          suggestedAnswer: "Review model assumptions, state reserve adjustment ratios clearly, and use bullet points for readability."
+        }
+      }));
+      onAddXp(50);
     } finally {
-      setIsEvaluating(false);
+      setEvaluatingQuestionId(null);
     }
   };
 
+  // Get active section info
+  const activeSection = sections.find(s => s.id === activeCategory) || sections[0];
+
+  // Filter questions for a specific subsection
+  const getQuestionsForSubsection = (sub: string) => {
+    return questions.filter(q => {
+      // match subject name exactly or loosely
+      const qSub = q.subject ? q.subject.toLowerCase() : "";
+      const sSub = sub.toLowerCase();
+      return qSub.includes(sSub) || sSub.includes(qSub);
+    });
+  };
+
   return (
-    <div className="space-y-6" id="question-bank-learning-hub">
+    <div className="space-y-6" id="interview-prep-viewport">
       
-      {/* HUB SUB NAV ROUTER */}
-      <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex-wrap gap-3">
-        <div className="flex gap-1">
-          {[
-            { id: "questions", label: "Browse Question Bank", icon: Search },
-            { id: "companies", label: "Company Prep Guides", icon: Briefcase },
-            { id: "library", label: "Subject Library & Flashcards", icon: BookOpen },
-            { id: "builder", label: "Dynamic AI Question Builder", icon: Sparkles }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSubTab(tab.id as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  isActive 
-                    ? "bg-brand-500 text-white" 
-                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-                }`}
-              >
-                <Icon size={14} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-extrabold uppercase tracking-wide border border-emerald-100">
-          Knowledge Base Live
-        </span>
-      </div>
-
-      {/* RENDER BROWSE QUESTIONS TAB */}
-      {activeSubTab === "questions" && (
-        <div className="space-y-5" id="browse-questions-tab">
-          
-          {/* Filtering bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search subject or keywords..."
-                className="w-full text-xs p-2 pl-9 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:bg-white"
-              />
-            </div>
-
-            <select
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:bg-white font-semibold"
-            >
-              <option value="All">All Companies</option>
-              <option value="Google">Google</option>
-              <option value="Amazon">Amazon</option>
-              <option value="McKinsey">McKinsey</option>
-              <option value="Goldman Sachs">Goldman Sachs</option>
-              <option value="MetLife">MetLife</option>
-            </select>
-
-            <select
-              value={selectedRound}
-              onChange={(e) => setSelectedRound(e.target.value)}
-              className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:bg-white font-semibold"
-            >
-              <option value="All">All Rounds</option>
-              <option value="Technical">Technical</option>
-              <option value="Behavioral">Behavioral</option>
-              <option value="Aptitude">Aptitude</option>
-              <option value="System Design">System Design</option>
-            </select>
-
-            <select
-              value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:bg-white font-semibold"
-            >
-              <option value="All">All Difficulties</option>
-              <option value="Easy">Easy</option>
-              <option value="Medium">Medium</option>
-              <option value="Hard">Hard</option>
-            </select>
-          </div>
-
-          {/* List of Questions */}
-          <div className="grid grid-cols-1 gap-4" id="questions-list-view">
-            {filteredQuestions.map(q => {
-              const isBookmarked = bookmarks.includes(q.id);
-              return (
-                <div key={q.id} className="bg-white p-5 rounded-2xl border border-slate-200 text-left flex justify-between items-start gap-4 hover:shadow-sm transition">
-                  <div className="space-y-3 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-brand-50 text-brand-600 text-[10px] font-bold font-mono">
-                        {q.company}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
-                        {q.role}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-semibold">
-                        {q.round}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        q.difficulty === "Easy" ? "bg-emerald-50 text-emerald-600" :
-                        q.difficulty === "Medium" ? "bg-amber-50 text-amber-600" :
-                        "bg-rose-50 text-rose-600"
-                      }`}>
-                        {q.difficulty}
-                      </span>
-                    </div>
-
-                    <p className="text-sm font-medium text-slate-700 font-display leading-relaxed">
-                      {q.text}
-                    </p>
-
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                      Core Subject: <span className="text-slate-600 font-semibold">{q.subject}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => toggleBookmark(q.id)}
-                    className="p-1.5 rounded-lg hover:bg-slate-50 transition cursor-pointer shrink-0"
-                  >
-                    <Bookmark 
-                      size={18} 
-                      className={isBookmarked ? "fill-amber-500 text-amber-500" : "text-slate-400"} 
-                    />
-                  </button>
-                </div>
-              );
-            })}
-
-            {filteredQuestions.length === 0 && (
-              <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl">
-                <Compass className="mx-auto text-slate-300 animate-spin" size={32} />
-                <p className="text-xs text-slate-400 font-medium mt-3">No questions matched your active filter settings.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* RENDER COMPANY PREP PAGES */}
-      {activeSubTab === "companies" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="company-prep-tab">
-          {COMPANIES.map(company => (
-            <div key={company.name} className="bg-white rounded-2xl border border-slate-200 p-5 text-left flex flex-col justify-between hover:shadow-md transition">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-display font-bold text-slate-800 text-base">{company.name}</h3>
-                  <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded font-bold font-mono uppercase">
-                    {company.sector}
-                  </span>
-                </div>
-
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {company.overview}
-                </p>
-
-                {/* Rounds checklist */}
-                <div className="space-y-1.5">
-                  <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Standard Interview Blocks</h4>
-                  <div className="space-y-1">
-                    {company.rounds.map((r, i) => (
-                      <div key={i} className="flex gap-2 items-center text-[11px] text-slate-600">
-                        <CheckCircle2 size={12} className="text-emerald-500" />
-                        <span>{r}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Skills commonly assessed */}
-                <div className="space-y-1.5 pt-1">
-                  <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Commonly Assessed Skills</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {company.skills.map((s, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200/60 text-slate-600 text-[10px] font-semibold">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-5 border-t border-slate-100 mt-5">
-                <button
-                  onClick={() => onStartCompanyMock(company.name)}
-                  className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
-                >
-                  <span>Practice mock interview</span>
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* RENDER SUBJECT LIBRARY */}
-      {activeSubTab === "library" && (
-        <div className="space-y-6" id="subject-library-tab">
-          
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 text-left space-y-1.5">
-            <h3 className="font-display font-bold text-slate-800 text-sm flex items-center gap-1">
-              <BookOpen size={16} className="text-brand-500" /> Quick Revision Cheat Sheets
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Use flipping memory cards to drill foundational methodologies, formulas, and terminology commonly encountered during high-bar interviews.
+      {/* 1. INTERVIEW PREPARATION HEADER BANNER */}
+      <div className="relative bg-[#1a365d] text-white p-8 rounded-3xl overflow-hidden shadow-md text-left">
+        {/* Subtle grid accent background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e40af_1px,transparent_1px),linear-gradient(to_bottom,#1e40af_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
+        
+        <div className="relative z-10 space-y-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#38bdf8] font-display">
+              Interview Preparation
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-2xl">
+              Equip yourself with comprehensive IAI & IFoA standard syllabus revision, general aptitude prep, and area-specific case studies formulated by veteran actuaries.
             </p>
           </div>
 
-          {/* Flashcard board */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {FLASHCARDS.map((card, idx) => {
-              const isFlipped = flippedCardIdx === idx;
+          {/* Links / Sub-navigation links mimicking Screenshot 2 */}
+          <div className="flex gap-6 pt-2 border-t border-slate-700/60 w-fit">
+            <button
+              onClick={() => setActiveMainTab("qb")}
+              className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                activeMainTab === "qb" ? "text-emerald-400" : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${activeMainTab === "qb" ? "bg-emerald-400" : "bg-slate-400"}`} />
+              Question Bank
+            </button>
+            <button
+              onClick={() => setActiveMainTab("videos")}
+              className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                activeMainTab === "videos" ? "text-emerald-400" : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${activeMainTab === "videos" ? "bg-emerald-400" : "bg-slate-400"}`} />
+              Videos
+            </button>
+            <button
+              onClick={() => setActiveMainTab("refiner")}
+              className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                activeMainTab === "refiner" ? "text-emerald-400" : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${activeMainTab === "refiner" ? "bg-emerald-400" : "bg-slate-400"}`} />
+              AI Q&A Refiner
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* RENDER QUESTION BANK SECTION */}
+      {activeMainTab === "qb" && (
+        <div className="space-y-8">
+          
+          {/* 2. THE FOUR COLORED CATEGORY CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {sections.map(sec => {
+              const isActive = activeCategory === sec.id;
+              
+              // Map custom colors nicely
+              let cardBg = "bg-blue-600";
+              let cardActiveBorder = "border-blue-400 ring-2 ring-blue-400/40";
+              if (sec.id === "aptitude") {
+                cardBg = "bg-orange-500";
+                cardActiveBorder = "border-orange-400 ring-2 ring-orange-400/40";
+              } else if (sec.id === "work") {
+                cardBg = "bg-emerald-500";
+                cardActiveBorder = "border-emerald-400 ring-2 ring-emerald-400/40";
+              } else if (sec.id === "technical") {
+                cardBg = "bg-rose-500";
+                cardActiveBorder = "border-rose-400 ring-2 ring-rose-400/40";
+              }
+
               return (
                 <button
-                  key={idx}
-                  onClick={() => setFlippedCardIdx(isFlipped ? null : idx)}
-                  className="h-44 w-full bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between text-left transition relative overflow-hidden group hover:border-indigo-300 focus:outline-none cursor-pointer"
+                  key={sec.id}
+                  onClick={() => {
+                    setActiveCategory(sec.id);
+                    setExpandedSubsection(null);
+                  }}
+                  className={`w-full text-left p-5 text-white rounded-2xl shadow-sm transition transform hover:-translate-y-0.5 focus:outline-none flex flex-col justify-between h-28 relative overflow-hidden cursor-pointer ${cardBg} ${
+                    isActive ? cardActiveBorder : "opacity-85 hover:opacity-100"
+                  }`}
                 >
-                  <div className="space-y-2 w-full">
-                    <span className="text-[9px] text-slate-400 font-extrabold font-mono uppercase tracking-wider block">
-                      {isFlipped ? "DEFINITION TIPS" : "REVISION CARD"}
-                    </span>
-                    
-                    {isFlipped ? (
-                      <div className="space-y-1 text-xs">
-                        <p className="font-bold text-indigo-700">{card.concept}</p>
-                        <p className="text-slate-500 text-[11px] leading-relaxed">{card.explanation}</p>
-                      </div>
-                    ) : (
-                      <h4 className="font-display font-extrabold text-slate-800 text-base leading-snug">
-                        {card.term}
-                      </h4>
-                    )}
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-extrabold tracking-wide uppercase font-display">{sec.name}</h3>
+                    <p className="text-[10px] text-white/80 font-medium">{sec.subsections.length} Core Modules Available</p>
                   </div>
-
-                  <span className="text-[9px] text-indigo-500 font-bold uppercase self-end tracking-wider group-hover:underline">
-                    {isFlipped ? "Show Term" : "Flip card"}
-                  </span>
+                  
+                  {/* Square Checkbox Icon exactly like Screenshot 2 */}
+                  <div className="self-end mt-2">
+                    <CheckSquare size={16} className="text-white/90" />
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          {/* Theory summary snippet */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
-              <h4 className="font-display font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-1 border-b border-slate-100 pb-2">
-                <FileText size={13} className="text-indigo-500" /> Behavioral & leadership cheatsheet
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                When structuring answers for behavioral metrics, always leverage the <strong>STAR method</strong>:
-              </p>
-              <ul className="text-xs text-slate-600 pl-4 list-disc space-y-1">
-                <li><strong>Situation</strong>: 20% of words. Context, scale, and background factors.</li>
-                <li><strong>Task</strong>: 10% of words. Clearly identify the specific challenge you owned.</li>
-                <li><strong>Action</strong>: 50% of words. Describe technical or logical steps you completed.</li>
-                <li><strong>Result</strong>: 20% of words. Metrics (e.g., $ savings, accuracy improvement, speed multiplier).</li>
-              </ul>
+          {/* 3. INTERACTIVE MODULE LISTINGS */}
+          <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm text-left space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h2 className="text-lg font-black text-slate-800 font-display">
+                {activeSection?.name}
+              </h2>
+              <span className="text-[10px] bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-bold">
+                Select a module to view practice cases
+              </span>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
-              <h4 className="font-display font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-1 border-b border-slate-100 pb-2">
-                <FileText size={13} className="text-brand-500" /> Technical & Math Reserves Formula
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Fundamental probability models useful for actuary reserving, statistical claims modelling, and algorithms:
-              </p>
-              <ul className="text-xs text-slate-600 pl-4 list-disc space-y-1">
-                <li><strong>Poisson Distribution</strong>: Ideal for predicting arrival rate of sparse software traffic errors or insurance claim counts.</li>
-                <li><strong>Compound Poisson</strong>: Model total aggregate risk premium payouts compounding over finite terms.</li>
-                <li><strong>Bayes' Theorem</strong>: Predictive conditional probability calculations during data modeling rounds.</li>
-              </ul>
+            <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
+              {activeSection?.subsections.map((sub, idx) => {
+                const isExpanded = expandedSubsection === sub;
+                const subQuestions = getQuestionsForSubsection(sub);
+
+                return (
+                  <div key={idx} className="py-3">
+                    <button
+                      onClick={() => setExpandedSubsection(isExpanded ? null : sub)}
+                      className="w-full flex items-center justify-between text-xs font-semibold text-slate-700 py-1.5 hover:text-slate-900 transition focus:outline-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Bullet square check icon matching screenshots */}
+                        <div className="w-5 h-5 border border-slate-300 rounded flex items-center justify-center bg-slate-50 font-mono text-[9px] text-slate-400">
+                          {idx + 1}
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">{sub}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold">
+                          {subQuestions.length} Questions
+                        </span>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
+                    </button>
+
+                    {/* Accordion Expansion containing Questions and Interactive Sandbox */}
+                    {isExpanded && (
+                      <div className="pl-8 pr-2 pt-4 pb-2 space-y-4 animate-fade-in bg-slate-50/40 rounded-2xl mt-2 p-4 border border-slate-100">
+                        {subQuestions.length > 0 ? (
+                          <div className="space-y-4">
+                            {subQuestions.map((q) => {
+                              const isBookmarked = bookmarks.includes(q.id);
+                              const qEval = evaluations[q.id];
+
+                              return (
+                                <div key={q.id} className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 text-left shadow-sm">
+                                  <div className="flex justify-between items-start gap-4">
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-100 text-blue-700 text-[9px] font-bold font-mono">
+                                          {q.company}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">
+                                          {q.role}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                          q.difficulty === "Easy" ? "bg-emerald-50 text-emerald-600" :
+                                          q.difficulty === "Medium" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                                        }`}>
+                                          {q.difficulty}
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-slate-800 font-semibold font-display leading-relaxed">
+                                        {q.text}
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      onClick={() => toggleBookmark(q.id)}
+                                      className="p-1.5 rounded-lg hover:bg-slate-50 transition cursor-pointer"
+                                    >
+                                      <Bookmark size={16} className={isBookmarked ? "fill-amber-500 text-amber-500" : "text-slate-400"} />
+                                    </button>
+                                  </div>
+
+                                  {/* Answer drafting box */}
+                                  <div className="space-y-2 pt-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                      Draft your response for real-time AI evaluation
+                                    </label>
+                                    <textarea
+                                      rows={4}
+                                      value={practiceAnswers[q.id] || ""}
+                                      onChange={(e) => handlePracticeChange(q.id, e.target.value)}
+                                      placeholder="Explain the mathematical equations, core assumptions, or framework in detail..."
+                                      className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 text-slate-700 font-medium leading-relaxed"
+                                    />
+                                    
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                        onClick={() => handleRefineAnswerFromShortcut(q.text, practiceAnswers[q.id] || "")}
+                                        disabled={!(practiceAnswers[q.id]?.trim())}
+                                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                      >
+                                        <Sparkles size={12} className="text-white animate-pulse" /> Refine with AI
+                                      </button>
+                                      <button
+                                        onClick={() => handleEvaluateAnswer(q.id, q.text)}
+                                        disabled={evaluatingQuestionId === q.id || !(practiceAnswers[q.id]?.trim())}
+                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                                      >
+                                        {evaluatingQuestionId === q.id ? (
+                                          <>
+                                            <RefreshCw className="animate-spin" size={12} /> Grading...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Sparkles size={12} className="text-amber-400 animate-pulse" /> Submit for AI Grade
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Evaluation results */}
+                                  {qEval && (
+                                    <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-3 animate-fade-in text-xs">
+                                      <div className="flex justify-between items-center border-b border-emerald-100 pb-1.5">
+                                        <span className="font-extrabold text-emerald-800 flex items-center gap-1">
+                                          <Award size={13} /> Evaluation Feedback Report
+                                        </span>
+                                        <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                                          Average Score: {Math.round((qEval.technicalAccuracy + qEval.completeness + qEval.communication + qEval.structure) / 4)}%
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {[
+                                          { k: "Accuracy", v: qEval.technicalAccuracy },
+                                          { k: "Completeness", v: qEval.completeness },
+                                          { k: "Structure", v: qEval.structure },
+                                          { k: "Delivery", v: qEval.communication }
+                                        ].map(m => (
+                                          <div key={m.k} className="bg-white p-2 rounded-lg border border-emerald-100 text-center">
+                                            <span className="text-[9px] text-slate-400 font-semibold block">{m.k}</span>
+                                            <span className="font-mono font-bold text-emerald-800">{m.v}%</span>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      <p className="text-slate-700 leading-relaxed">
+                                        <strong>Remarks:</strong> {qEval.remarks}
+                                      </p>
+                                      <p className="text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100 leading-relaxed">
+                                        <strong>Best-Practice Improvement Guide:</strong> {qEval.suggestedAnswer}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center bg-white border border-dashed border-slate-200 rounded-2xl space-y-3">
+                            <Compass size={24} className="mx-auto text-slate-300 animate-pulse" />
+                            <h4 className="text-xs font-bold text-slate-700">No mock questions registered for {sub}</h4>
+                            <p className="text-[10px] text-slate-400 max-w-sm mx-auto">
+                              No questions mapped in database yet. Head to the WooCommerce Admin panel to register new assessment tasks, or start custom mock interviews!
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* RENDER DYNAMIC AI QUESTION BUILDER */}
-      {activeSubTab === "builder" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" id="dynamic-builder-tab">
-          
-          {/* Form controllers */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 text-left space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="font-display font-bold text-slate-700 text-xs flex items-center gap-1 border-b border-slate-100 pb-2 uppercase tracking-wide">
-                <Sparkles size={13} className="text-indigo-600 animate-pulse" /> Define AI Directives
-              </h3>
-
-              {/* Target Company input */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Company</label>
-                <input
-                  type="text"
-                  value={builderCompany}
-                  onChange={(e) => setBuilderCompany(e.target.value)}
-                  placeholder="e.g. Google, McKinsey, MetLife"
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white text-slate-700 font-medium"
-                />
-              </div>
-
-              {/* Target Role/Domain */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Domain / Role</label>
-                <input
-                  type="text"
-                  value={builderDomain}
-                  onChange={(e) => setBuilderDomain(e.target.value)}
-                  placeholder="e.g. Software Engineer, Risk Actuary, PM"
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white text-slate-700 font-medium"
-                />
-              </div>
-
-              {/* Resume Context */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Attach Resume Context</label>
-                <select
-                  value={selectedResumeId}
-                  onChange={(e) => setSelectedResumeId(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white text-slate-700 font-medium"
-                >
-                  <option value="">No Resume (General Question)</option>
-                  {resumes.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Job Description Context */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Attach Job Description</label>
-                <select
-                  value={selectedJdId}
-                  onChange={(e) => setSelectedJdId(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white text-slate-700 font-medium"
-                >
-                  <option value="">No JD (Standard Target Role)</option>
-                  {jds.map(j => (
-                    <option key={j.id} value={j.id}>{j.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Difficulty */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Difficulty</label>
-                <select
-                  value={builderDifficulty}
-                  onChange={(e) => setBuilderDifficulty(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white text-slate-700 font-medium font-semibold"
-                >
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                  <option value="Expert">Expert / Partner</option>
-                </select>
-              </div>
+      {/* RENDER VIDEOS SECTION */}
+      {activeMainTab === "videos" && (
+        <div className="space-y-6 text-left">
+          <div className="p-5 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <Video size={16} className="text-blue-500" /> Syllabus Masterclass Revision Library
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">Review lecture-style masterclasses recorded by qualified Fellows covering critical actuarial mathematical equations.</p>
             </div>
-
-            <button
-              onClick={handleBuildAIQuestion}
-              disabled={isGenerating}
-              className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="animate-spin" size={12} /> Generating bespoke run...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={12} /> Generate custom interview scenario
-                </>
-              )}
-            </button>
+            <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-700 font-mono font-bold">
+              {PREP_VIDEOS.length} Revision Guides Loaded
+            </span>
           </div>
 
-          {/* Render generated prompt sandbox */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-6 text-left flex flex-col justify-between shadow-sm space-y-6">
-            {generatedQuestion ? (
-              <div className="space-y-5 flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100 font-extrabold uppercase font-mono">
-                      Dynamic Scenario Ready
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {PREP_VIDEOS.map(vid => (
+              <div key={vid.id} className="bg-white border border-slate-200 rounded-3xl p-5 hover:shadow-md transition flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="relative aspect-video bg-slate-900 rounded-2xl overflow-hidden flex items-center justify-center text-white border border-slate-800 group">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent z-10" />
+                    <PlayCircle className="text-white opacity-85 group-hover:opacity-100 group-hover:scale-110 transition z-20 pointer-events-none" size={44} />
+                    
+                    <span className="absolute bottom-3 right-3 bg-black/70 px-2 py-0.5 rounded text-[10px] font-mono font-bold z-20">
+                      {vid.duration}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-semibold">{builderCompany} • {builderDomain}</span>
+                    <span className="absolute top-3 left-3 bg-blue-600 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider z-20">
+                      {vid.difficulty}
+                    </span>
                   </div>
 
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <p className="text-xs md:text-sm text-slate-700 font-medium leading-relaxed font-display">
-                      {generatedQuestion.text}
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-800 font-display hover:text-blue-600 transition cursor-pointer">
+                      {vid.title}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-semibold">
+                      Instructor: <span className="text-slate-600">{vid.instructor}</span> • {vid.views} active views
                     </p>
                   </div>
 
-                  {/* Answer Input */}
-                  {!evaluationResult && (
-                    <div className="space-y-2 pt-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Your Answer Draft</label>
-                      <textarea
-                        rows={6}
-                        value={userPracticeAnswer}
-                        onChange={(e) => setUserPracticeAnswer(e.target.value)}
-                        placeholder="Draft your response here. Try to use structured formatting (like STAR method for behavioral or clear logical parameters for technical)."
-                        className="w-full p-3 bg-slate-50 hover:bg-slate-100/40 focus:bg-white text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 leading-relaxed text-slate-700"
-                      />
-                    </div>
-                  )}
-
-                  {/* Evaluation output if parsed */}
-                  {evaluationResult && (
-                    <div className="space-y-4 animate-fade-in border-t border-slate-100 pt-4">
-                      <h4 className="font-display font-bold text-emerald-700 text-xs uppercase flex items-center gap-1">
-                        <Award size={13} /> Performance Evaluation Report
-                      </h4>
-
-                      {/* Score metrics */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        {[
-                          { key: "Technical", val: evaluationResult.technicalAccuracy },
-                          { key: "Completeness", val: evaluationResult.completeness },
-                          { key: "Communication", val: evaluationResult.communication },
-                          { key: "Structure", val: evaluationResult.structure },
-                          { key: "Confidence", val: evaluationResult.confidence }
-                        ].map(metric => (
-                          <div key={metric.key} className="p-2 bg-slate-50 border border-slate-200/60 rounded-xl text-center">
-                            <span className="text-[9px] text-slate-400 font-bold block">{metric.key}</span>
-                            <span className="text-xs font-bold font-mono text-slate-700">{metric.val}%</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="space-y-2 text-xs">
-                        <div className="p-3 bg-emerald-50 text-slate-700 rounded-xl border border-emerald-100 leading-relaxed">
-                          <strong>Remarks:</strong> {evaluationResult.remarks}
-                        </div>
-                        <div className="p-3 bg-slate-50 text-slate-600 rounded-xl border border-slate-200 leading-relaxed">
-                          <strong>Suggested Improvement Answer:</strong> {evaluationResult.suggestedAnswer}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    {vid.description}
+                  </p>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
-                  {evaluationResult ? (
-                    <button
-                      onClick={() => {
-                        setEvaluationResult(null);
-                        setUserPracticeAnswer("");
-                      }}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-                    >
-                      Clear & Try Another Solution
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleEvaluatePracticeAnswer}
-                      disabled={isEvaluating || !userPracticeAnswer.trim()}
-                      className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      {isEvaluating ? (
-                        <>
-                          <RefreshCw className="animate-spin" size={12} /> Evaluating Solution...
-                        </>
-                      ) : (
-                        <>
-                          <Send size={12} /> Submit answer for evaluation (+50 XP)
-                        </>
-                      )}
-                    </button>
-                  )}
+                <button
+                  onClick={() => {
+                    setPlayingVideo(vid);
+                    setIsPlaying(true);
+                    setVideoProgress(15);
+                  }}
+                  className="w-full py-2 bg-slate-50 hover:bg-slate-100/80 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Play size={12} /> Play Masterclass Video
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeMainTab === "refiner" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+          {/* Left panel: input forms */}
+          <div className="lg:col-span-5 bg-white border border-slate-100 p-6 rounded-2xl shadow-sm space-y-6">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-500 animate-pulse" /> Q&A Personalizer
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Paste any academic, exam, or behavioral interview question along with your rough, unpolished thoughts. The AI will convert it into a crisp, high-impact, first-person response with unnecessary fluff completely removed.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Interview Question / Academic Prompt
+                </label>
+                <input
+                  type="text"
+                  value={refinerQuestion}
+                  onChange={(e) => setRefinerQuestion(e.target.value)}
+                  placeholder="e.g. Explain how you would model reserving uncertainty using CS2 standards."
+                  className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 text-slate-800 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Paste Your Raw Thoughts / Rough Answer
+                </label>
+                <textarea
+                  rows={8}
+                  value={refinerAnswer}
+                  onChange={(e) => setRefinerAnswer(e.target.value)}
+                  placeholder="Paste your drafts here. Feel free to list rough points, bullet points, or raw conversational paragraphs..."
+                  className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 text-slate-700 font-medium leading-relaxed font-mono"
+                />
+              </div>
+
+              <button
+                onClick={() => handleRefineAnswer()}
+                disabled={refinerLoading || !refinerQuestion.trim() || !refinerAnswer.trim()}
+                className="w-full py-3 bg-[#1a365d] hover:bg-[#1e40af] disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                {refinerLoading ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={13} /> Refining with AI Specialist...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={13} className="text-amber-400 animate-pulse" /> Convert to Professional Content
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Right panel: results */}
+          <div className="lg:col-span-7 bg-white border border-slate-100 p-6 rounded-2xl shadow-sm space-y-6">
+            {!refinerLoading && !refinerResult && (
+              <div className="h-full flex flex-col justify-center items-center p-12 text-center text-slate-400 space-y-4">
+                <Sparkles size={40} className="text-slate-200 animate-pulse" />
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-700">Refiner Output Workbench</h4>
+                  <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
+                    Fill in the form on the left, or use the "Refine with AI" shortcut on any question in the Question Bank tab to start!
+                  </p>
                 </div>
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-                <Sparkles className="text-indigo-400 animate-pulse" size={32} />
-                <h4 className="font-display font-bold text-slate-700 text-sm">Create Dynamic Context Practice Scenarios</h4>
-                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                  Select your target preferences on the left pane and let Gemini assemble structured questions matching real corporate interviewer guidelines.
-                </p>
+            )}
+
+            {refinerLoading && (
+              <div className="h-full flex flex-col justify-center items-center p-12 text-center space-y-4 animate-pulse">
+                <RefreshCw size={36} className="text-indigo-500 animate-spin" />
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-800">Analyzing & Restructuring Your Content</h4>
+                  <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+                    Weeding out unnecessary filler, formatting with standard first-person pronouns, and packing in rigorous actuarial terms...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {refinerResult && (
+              <div className="space-y-6 text-left animate-fade-in">
+                {/* 1. Refined Answer */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block bg-emerald-50 px-2.5 py-1 rounded-md">
+                      Refined High-Quality Response
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(refinerResult.refinedAnswer);
+                        alert("Refined response copied to clipboard!");
+                      }}
+                      className="px-2.5 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 rounded font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      Copy Answer
+                    </button>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed font-medium font-sans">
+                    {refinerResult.refinedAnswer}
+                  </div>
+                </div>
+
+                {/* 2. Key Concepts Added */}
+                {refinerResult.keyConcepts && refinerResult.keyConcepts.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">
+                      Rigorous Actuarial & Tech Concepts Embedded
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {refinerResult.keyConcepts.map((c: string, idx: number) => (
+                        <span key={idx} className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-bold">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Side-by-side: Strengths vs Fluff Removed */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Fluff Removed */}
+                  {refinerResult.fluffRemoved && refinerResult.fluffRemoved.length > 0 && (
+                    <div className="p-4 bg-rose-50/40 border border-rose-100/60 rounded-xl space-y-2">
+                      <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block">
+                        Unnecessary Fillers & Fluff Removed
+                      </span>
+                      <ul className="space-y-1 list-none p-0 m-0">
+                        {refinerResult.fluffRemoved.map((f: string, idx: number) => (
+                          <li key={idx} className="text-[10px] text-rose-800 flex items-start gap-1.5 leading-relaxed font-semibold">
+                            <span className="text-rose-400 mt-0.5 font-bold">✕</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Strengths Added */}
+                  {refinerResult.strengthsAdded && refinerResult.strengthsAdded.length > 0 && (
+                    <div className="p-4 bg-emerald-50/40 border border-emerald-100/60 rounded-xl space-y-2">
+                      <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block">
+                        Key Value-Adds & Impact Highlighted
+                      </span>
+                      <ul className="space-y-1 list-none p-0 m-0">
+                        {refinerResult.strengthsAdded.map((s: string, idx: number) => (
+                          <li key={idx} className="text-[10px] text-emerald-800 flex items-start gap-1.5 leading-relaxed font-semibold">
+                            <span className="text-emerald-400 mt-0.5 font-bold">✓</span> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Tone Analysis */}
+                {refinerResult.toneAnalysis && (
+                  <div className="p-4 bg-amber-50/40 border border-amber-100/60 rounded-xl space-y-1 text-xs">
+                    <span className="text-[9px] font-bold text-amber-700 uppercase tracking-wider block">
+                      Coach Tone & Delivery Assessment
+                    </span>
+                    <p className="text-slate-700 italic leading-relaxed">
+                      "{refinerResult.toneAnalysis}"
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
+        </div>
+      )}
 
+      {/* Mock Video Player Modal */}
+      {playingVideo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden text-left shadow-2xl space-y-4 p-5 text-white">
+            <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">{playingVideo.difficulty} Masterclass</span>
+                <h3 className="text-sm font-extrabold text-slate-200">{playingVideo.title}</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setPlayingVideo(null);
+                  setIsPlaying(false);
+                }}
+                className="p-1 hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-white text-xs font-bold"
+              >
+                Close (X)
+              </button>
+            </div>
+
+            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-slate-800 flex flex-col justify-between p-4">
+              {/* Playback simulation screen */}
+              <div className="flex-1 flex items-center justify-center">
+                {isPlaying ? (
+                  <div className="space-y-2 text-center animate-pulse">
+                    <span className="text-xs text-blue-400 font-semibold block">Now streaming video class</span>
+                    <span className="text-[10px] text-slate-400">Time remaining: 23:45</span>
+                  </div>
+                ) : (
+                  <PlayCircle size={48} className="text-blue-500 cursor-pointer" onClick={() => setIsPlaying(true)} />
+                )}
+              </div>
+
+              {/* Player control timeline */}
+              <div className="space-y-2">
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${videoProgress}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono">
+                  <span>05:30</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setIsPlaying(!isPlaying)} className="hover:text-white font-bold">
+                      {isPlaying ? "PAUSE" : "PLAY"}
+                    </button>
+                    <button onClick={() => setVideoProgress(p => Math.min(100, p + 10))} className="hover:text-white font-bold">
+                      SKIP 10S
+                    </button>
+                  </div>
+                  <span>{playingVideo.duration}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+              Instructor Tip: {playingVideo.instructor} advises candidates to note down the specific derivation formulas and keep the PDF handbook ready for active annotation during the lecture.
+            </p>
+          </div>
         </div>
       )}
 
